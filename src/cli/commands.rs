@@ -1,20 +1,19 @@
-use clap::{Parser, Subcommand};
-use axum::Router;
-use rmcp::{
-    transport::{
-        StreamableHttpServerConfig,
-        streamable_http_server::{
-            session::local::LocalSessionManager, 
-            tower::StreamableHttpService
-        },
-    },
-};
 use crate::services::Calculator;
+use axum::Router;
+use clap::{Parser, Subcommand};
+use rmcp::transport::{
+    StreamableHttpServerConfig,
+    streamable_http_server::{session::local::LocalSessionManager, tower::StreamableHttpService},
+};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
 #[derive(Parser)]
-#[command(name = "hypatia-mcp-server", about = "AI-oriented memory management MCP server", version)]
+#[command(
+    name = "hypatia-mcp-server",
+    about = "AI-oriented memory management MCP server",
+    version
+)]
 pub struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -22,7 +21,7 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-     /// Start the MCP server
+    /// Start the MCP server
     Serve {
         /// Path to shelf directory
         #[arg(short, long, default_value_t = 8000)]
@@ -30,7 +29,7 @@ enum Commands {
         /// Optional name for the shelf
         #[arg(short, long, default_value_t = "localhost".to_string())]
         address: String,
-    }
+    },
 }
 
 pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
@@ -40,7 +39,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         None => {
             panic!("No command provided. Use --help for usage information.");
         }
-            Some(cmd) => execute_command(cmd).await?,
+        Some(cmd) => execute_command(cmd).await?,
     }
     Ok(())
 }
@@ -57,14 +56,13 @@ async fn execute_command(cmd: Commands) -> Result<(), Box<dyn std::error::Error>
                 config,
             );
             // 4. Mount the MCP service as a Tower service.
-            let app = Router::new()
-                .route_service("/mcp", mcp_service);
+            let app = Router::new().route_service("/mcp", mcp_service);
 
-            // 5. Fire up the native HTTP server 
+            // 5. Fire up the native HTTP server
             let addr = SocketAddr::from((address.parse::<std::net::IpAddr>()?, port));
             let listener = tokio::net::TcpListener::bind(addr).await?;
             println!("Streamable HTTP MCP Server running on http://{}", addr);
-            
+
             axum::serve(listener, app).await?;
         }
     }

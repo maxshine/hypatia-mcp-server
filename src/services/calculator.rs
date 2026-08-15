@@ -1,18 +1,10 @@
-use rmcp::{
-    handler::server::wrapper::Parameters, 
-    serde, 
-    schemars, 
-    tool, 
-    tool_router,
-};
-
+use rmcp::{handler::server::wrapper::Parameters, schemars, serde, tool, tool_router};
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 struct AddParams {
     a: i32,
     b: i32,
 }
-
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 struct EchoParams {
