@@ -10,4 +10,7 @@ rmcp = { version = "3.1.2", features = ["server", "transport-streamable-http-ser
 schemars = "1.2.2"
 serde = "1.0.229"
 tokio = { version = "1.53.1", features = ["full"] }
+hypatia = { git = "https://github.com/MarchLiu/hypatia" }
 
+[patch.crates-io]
+hypatia = { git = "https://github.com/MarchLiu/hypatia" }
