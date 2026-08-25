@@ -1,0 +1,6 @@
+
+
+# .cargo/config.toml
+# [target.'cfg(all())']
+# Explicitly force Cargo to treat hypatia strictly as a library, hiding src/main.rs
+patch = { hypatia = { lib = true, bin = [] } }
