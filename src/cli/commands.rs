@@ -1,4 +1,4 @@
-use crate::services::Calculator;
+use crate::services::CombinedServer;
 use axum::Router;
 use clap::{Parser, Subcommand};
 use rmcp::transport::{
@@ -51,7 +51,7 @@ async fn execute_command(cmd: Commands) -> Result<(), Box<dyn std::error::Error>
             let mut config = StreamableHttpServerConfig::default();
             config.legacy_session_mode = false;
             let mcp_service = StreamableHttpService::new(
-                || Ok(Calculator::new()),
+                || Ok(CombinedServer::default()),
                 Arc::new(LocalSessionManager::default()),
                 config,
             );

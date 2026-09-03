@@ -1,25 +1,14 @@
 use rmcp::{handler::server::wrapper::Parameters, schemars, serde, tool, tool_router};
+use super::combined_server::CombinedServer;
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
-struct AddParams {
-    a: i32,
-    b: i32,
-}
+struct AddParams { a: i32, b: i32 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
-struct EchoParams {
-    content: std::string::String,
-}
+struct EchoParams { content: String }
 
-#[derive(Clone, Default)]
-pub struct Calculator {}
-
-#[tool_router(server_handler)]
-impl Calculator {
-    pub fn new() -> Self {
-        Self {}
-    }
-
+#[tool_router(router = calc_router, vis = "pub")]
+impl CombinedServer {
     #[tool(description = "Add two numbers")]
     fn add(&self, Parameters(AddParams { a, b }): Parameters<AddParams>) -> String {
         (a + b).to_string()
