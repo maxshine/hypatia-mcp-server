@@ -1,7 +1,7 @@
 use rmcp::{tool_handler, ServerHandler};
 
 #[derive(Clone, Default)]
-pub struct CombinedServer;
+pub struct CombinedServer {}
 
 // Combines routers generated in the sibling impl files
 #[tool_handler(router = (Self::calc_router() + Self::memory_router()))]
