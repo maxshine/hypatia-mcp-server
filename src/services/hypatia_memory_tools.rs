@@ -1,6 +1,5 @@
 use rmcp::{handler::server::wrapper::Parameters, schemars, serde, tool, tool_router};
 use super::combined_server::CombinedServer;
-use std::{ops::Deref};
 use hypatia::{lab::Lab};
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 struct ConnectParams { shelf_name: String }
@@ -31,5 +30,11 @@ impl CombinedServer {
         }
         let sentence: String = ret.join(",");
         format!("{} hypatia shelves", sentence)
+    }
+    #[tool(description = "Disconnect a hypatia memory shelf from registry")]
+    fn disconnect(&self, Parameters(ConnectParams { shelf_name }): Parameters<ConnectParams>) -> String {
+        let mut hypatia_lab = Lab::new().unwrap();
+        let _ = hypatia_lab.disconnect_shelf(shelf_name.as_str()).unwrap();
+        format!("{} hypatia shelf disconnected", shelf_name)
     }
 }
