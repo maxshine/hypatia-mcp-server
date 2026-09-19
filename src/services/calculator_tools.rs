@@ -1,11 +1,16 @@
-use rmcp::{handler::server::wrapper::Parameters, schemars, serde, tool, tool_router};
 use super::combined_server::CombinedServer;
+use rmcp::{handler::server::wrapper::Parameters, schemars, serde, tool, tool_router};
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
-struct AddParams { a: i32, b: i32 }
+struct AddParams {
+    a: i32,
+    b: i32,
+}
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
-struct EchoParams { content: String }
+struct EchoParams {
+    content: String,
+}
 
 #[tool_router(router = calc_router, vis = "pub")]
 impl CombinedServer {

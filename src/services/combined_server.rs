@@ -1,4 +1,4 @@
-use rmcp::{tool_handler, ServerHandler};
+use rmcp::{ServerHandler, tool_handler};
 
 #[derive(Clone, Default)]
 pub struct CombinedServer {}

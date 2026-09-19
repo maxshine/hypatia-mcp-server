@@ -1,8 +1,10 @@
-use rmcp::{handler::server::wrapper::Parameters, schemars, serde, tool, tool_router};
 use super::combined_server::CombinedServer;
-use hypatia::{lab::Lab};
+use hypatia::lab::Lab;
+use rmcp::{handler::server::wrapper::Parameters, schemars, serde, tool, tool_router};
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
-struct ConnectParams { shelf_name: String }
+struct ConnectParams {
+    shelf_name: String,
+}
 
 fn dirs_home() -> std::path::PathBuf {
     std::env::var("HOME")
@@ -14,10 +16,15 @@ fn dirs_home() -> std::path::PathBuf {
 #[tool_router(router = memory_router, vis = "pub")]
 impl CombinedServer {
     #[tool(description = "Connect to a hypatia memory shelf")]
-    fn connect(&self, Parameters(ConnectParams { shelf_name }): Parameters<ConnectParams>) -> String {
+    fn connect(
+        &self,
+        Parameters(ConnectParams { shelf_name }): Parameters<ConnectParams>,
+    ) -> String {
         let mut hypatia_lab = Lab::new().unwrap();
         let shelf_path = dirs_home().join(".hypatia").join(&shelf_name);
-        let result = hypatia_lab.connect_shelf(&shelf_path, Some(shelf_name.as_str())).unwrap();
+        let result = hypatia_lab
+            .connect_shelf(&shelf_path, Some(shelf_name.as_str()))
+            .unwrap();
         format!("{} hypatia shelf connected", result)
     }
     #[tool(description = "List available hypatia memory shelves")]
@@ -32,9 +39,12 @@ impl CombinedServer {
         format!("{} hypatia shelves", sentence)
     }
     #[tool(description = "Disconnect a hypatia memory shelf from registry")]
-    fn disconnect(&self, Parameters(ConnectParams { shelf_name }): Parameters<ConnectParams>) -> String {
+    fn disconnect(
+        &self,
+        Parameters(ConnectParams { shelf_name }): Parameters<ConnectParams>,
+    ) -> String {
         let mut hypatia_lab = Lab::new().unwrap();
-        let _ = hypatia_lab.disconnect_shelf(shelf_name.as_str()).unwrap();
+        hypatia_lab.disconnect_shelf(shelf_name.as_str()).unwrap();
         format!("{} hypatia shelf disconnected", shelf_name)
     }
 }
