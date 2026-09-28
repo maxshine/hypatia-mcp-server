@@ -1,9 +1,17 @@
 use super::combined_server::CombinedServer;
 use hypatia::lab::Lab;
-use rmcp::{handler::server::wrapper::Parameters, schemars, serde, tool, tool_router};
+use rmcp::{
+    handler::server::wrapper::{Json, Parameters},
+    schemars, serde, tool, tool_router,
+};
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 struct ConnectParams {
     shelf_name: String,
+}
+
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+struct ShelfList {
+    shelves: Vec<String>,
 }
 
 fn dirs_home() -> std::path::PathBuf {
@@ -16,7 +24,7 @@ fn dirs_home() -> std::path::PathBuf {
 #[tool_router(router = memory_router, vis = "pub")]
 impl CombinedServer {
     #[tool(description = "Connect to a hypatia memory shelf")]
-    fn connect(
+    fn connect_shelf(
         &self,
         Parameters(ConnectParams { shelf_name }): Parameters<ConnectParams>,
     ) -> String {
@@ -28,18 +36,17 @@ impl CombinedServer {
         format!("{} hypatia shelf connected", result)
     }
     #[tool(description = "List available hypatia memory shelves")]
-    fn list(&self) -> String {
+    fn list_shelves(&self) -> Json<ShelfList> {
         let hypatia_lab = Lab::new().unwrap();
         let shelves = hypatia_lab.list_shelves();
-        let mut ret: Vec<String> = Vec::new();
-        for (name, _, _) in &shelves {
-            ret.push((*name).to_string());
-        }
-        let sentence: String = ret.join(",");
-        format!("{} hypatia shelves", sentence)
+        let ret: Vec<String> = shelves
+            .iter()
+            .map(|(name, _, _)| name.to_string())
+            .collect();
+        Json(ShelfList { shelves: ret })
     }
     #[tool(description = "Disconnect a hypatia memory shelf from registry")]
-    fn disconnect(
+    fn disconnect_shelf(
         &self,
         Parameters(ConnectParams { shelf_name }): Parameters<ConnectParams>,
     ) -> String {
