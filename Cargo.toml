@@ -6,8 +6,8 @@ edition = "2024"
 [dependencies]
 axum = { version = "0.8.9", features = ["http2"] }
 clap = { version = "4.6.6", features = ["derive"] }
-rmcp = { version = "3.1.2", features = ["server", "transport-streamable-http-server"] }
+rmcp = { version = "3.5.0", features = ["server", "transport-streamable-http-server"] }
 schemars = "1.2.2"
 serde = "1.0.229"
 tokio = { version = "1.53.1", features = ["full"] }
-hypatia = { git = "https://github.com/MarchLiu/hypatia", tag="v4.0.0", features = ["legacy-migration", "postgres-backend"] }
+hypatia = { git = "https://github.com/MarchLiu/hypatia", tag="v4.1.0", features = ["legacy-migration", "postgres-backend"] }

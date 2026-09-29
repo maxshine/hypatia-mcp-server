@@ -1439,8 +1439,8 @@ dependencies = [
 
 [[package]]
 name = "hypatia"
-version = "4.0.0"
-source = "git+https://github.com/MarchLiu/hypatia?tag=v4.0.0#c67fa9c13da472dc72382e443807be404e3e9287"
+version = "4.1.0"
+source = "git+https://github.com/MarchLiu/hypatia?tag=v4.1.0#d32f94e5a31de632d94673aa03851c692a8acc49"
 dependencies = [
  "chrono",
  "clap",
@@ -1461,6 +1461,7 @@ dependencies = [
  "thiserror",
  "tokenizers",
  "toml",
+ "toml_edit",
  "ureq",
  "usearch",
 ]
