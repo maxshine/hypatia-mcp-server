@@ -114,7 +114,7 @@ struct ToolResult {
 const DEFAULT_SHELF: &str = "default";
 const DEFAULT_LIMIT: i64 = 100;
 
-fn dirs_home() -> std::path::PathBuf {
+pub fn dirs_home() -> std::path::PathBuf {
     std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
         .map(std::path::PathBuf::from)

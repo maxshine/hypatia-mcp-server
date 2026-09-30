@@ -1,3 +1,4 @@
+use crate::cli::init_shelf::run_init_shelf;
 use crate::services::CombinedServer;
 use axum::Router;
 use clap::{Parser, Subcommand};
@@ -23,12 +24,17 @@ pub struct Cli {
 enum Commands {
     /// Start the MCP server
     Serve {
-        /// Path to shelf directory
+        /// target port for the MCP server, default is 8000
         #[arg(short, long, default_value_t = 8000)]
         port: u16,
-        /// Optional name for the shelf
+        /// bind address for the MCP server, default is localhost
         #[arg(short, long, default_value_t = "localhost".to_string())]
         address: String,
+    },
+    InitShelf {
+        /// logical name for the shelf to be initialized
+        #[arg(short, long, default_value_t = "default".to_string())]
+        shelf_name: String,
     },
 }
 
@@ -64,6 +70,11 @@ async fn execute_command(cmd: Commands) -> Result<(), Box<dyn std::error::Error>
             println!("Streamable HTTP MCP Server running on http://{}", addr);
 
             axum::serve(listener, app).await?;
+        }
+        Commands::InitShelf { shelf_name } => {
+            // Add the logic to initialize the shelf here
+            run_init_shelf(Some(&shelf_name)).unwrap();
+            println!("Initialized shelf with name: {}", shelf_name);
         }
     }
     Ok(())
