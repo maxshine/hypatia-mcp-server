@@ -80,6 +80,7 @@ These are the MCP tools currently exposed for agent use:
 - [ ] Fill the test automation gap.
 - [ ] CI/CD automation to publish ready-to-run binaries.
 - [ ] Proper documentation site around the project.
+- [ ] Active contributions to upstream Hypatia.
 
 ## License
 
