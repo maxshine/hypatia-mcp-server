@@ -73,7 +73,7 @@ struct StatementParameter {
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
-struct StatementTripleArgs {
+struct StatementTripleRequestParameter {
     head: String,
     relation: String,
     tail: String,
@@ -107,12 +107,20 @@ struct SimilarityRequestParameter {
     shelf: Option<String>,
 }
 
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+struct BackfillRequestParameter {
+    limit: Option<usize>,
+    shelf: Option<String>,
+}
+
 #[derive(Debug, serde::Serialize, schemars::JsonSchema)]
 struct ToolResult {
     result: Value,
 }
 const DEFAULT_SHELF: &str = "default";
 const DEFAULT_LIMIT: i64 = 100;
+const BACKFILL_DEFAULT_LIMIT: usize = 64;
+const BACKFILL_MAX_LIMIT: usize = 512;
 
 pub fn dirs_home() -> std::path::PathBuf {
     std::env::var("HOME")
@@ -448,12 +456,12 @@ impl CombinedServer {
     #[tool(description = "Delete a statement in a hypatia memory shelf")]
     fn delete_statement(
         &self,
-        Parameters(StatementTripleArgs {
+        Parameters(StatementTripleRequestParameter {
             head,
             relation,
             tail,
             shelf,
-        }): Parameters<StatementTripleArgs>,
+        }): Parameters<StatementTripleRequestParameter>,
     ) -> Json<ToolResult> {
         let mut hypatia_lab = hypatia::lab::Lab::new().unwrap();
         let shelf = canonicalize_shelf_name(shelf);
@@ -537,5 +545,31 @@ impl CombinedServer {
         let mut out = rows(result);
         out["embedding"] = debt(&mut hypatia_lab, &shelf);
         Json(ToolResult { result: out })
+    }
+
+    #[tool(description = "Backfill knowledges and statements in a hypatia memory shelf")]
+    fn backfill_shelf(
+        &self,
+        Parameters(BackfillRequestParameter { limit, shelf }): Parameters<BackfillRequestParameter>,
+    ) -> Json<ToolResult> {
+        let mut hypatia_lab = hypatia::lab::Lab::new().unwrap();
+        let shelf = canonicalize_shelf_name(shelf);
+        let limit = limit.unwrap_or(BACKFILL_DEFAULT_LIMIT);
+        if !(1..=BACKFILL_MAX_LIMIT).contains(&limit) {
+            return Json(ToolResult {
+                result: json!({
+                    "error": format!("limit must be between 1 and {BACKFILL_MAX_LIMIT}, got {limit}")
+                }),
+            });
+        }
+        let stats = hypatia_lab.backfill_batch(&shelf, limit).unwrap();
+        let result = json!({
+            "installed": stats.installed,
+            "skipped": stats.skipped,
+            "failed": stats.failed,
+            "error": stats.error,
+            "embedding": debt(&mut hypatia_lab, &shelf)
+        });
+        Json(ToolResult { result: result })
     }
 }
