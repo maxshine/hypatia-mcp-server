@@ -21,7 +21,7 @@ configuration once at start.";
 const DUMMY_RESOURCE_URI: &str = "dummy://resource";
 
 // Combines routers generated in the sibling impl files
-#[tool_handler(router = (Self::calc_router() + Self::memory_router()))]
+#[tool_handler(router = (Self::calc_router() + Self::memory_router() + Self::memory_hook_router()))]
 #[prompt_handler(router = Self::dummy_prompt_router())]
 impl ServerHandler for CombinedServer {
     fn get_info(&self) -> ServerConfig {
