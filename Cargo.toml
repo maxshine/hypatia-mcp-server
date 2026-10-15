@@ -12,3 +12,4 @@ serde = "1.0.229"
 tokio = { version = "1.53.1", features = ["full"] }
 hypatia = { git = "https://github.com/MarchLiu/hypatia", tag="v4.1.1", features = ["legacy-migration", "postgres-backend"] }
 anyhow = "1"
+time = { version = "0.3.55", features = ["std", "serde-human-readable", "formatting", "parsing", "macros", "local-offset"] }
