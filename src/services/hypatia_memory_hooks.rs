@@ -25,8 +25,24 @@ pub fn hypatia_hook_hook_log() -> std::path::PathBuf {
     hypatia_home().join("hook.log")
 }
 
-pub fn format_message_name(session_id: &str, turn_id: &str) -> String {
-    format!("msg_{}_{}_a", session_id, turn_id)
+/// Author of a logged message; each role gets its own entry per turn.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MessageRole {
+    User,
+    Assistant,
+}
+
+impl MessageRole {
+    fn suffix(self) -> &'static str {
+        match self {
+            MessageRole::User => "u",
+            MessageRole::Assistant => "a",
+        }
+    }
+}
+
+pub fn format_message_name(session_id: &str, turn_id: &str, role: MessageRole) -> String {
+    format!("msg_{}_{}_{}", session_id, turn_id, role.suffix())
 }
 
 fn parse_tags(raw: &str) -> Vec<String> {
@@ -111,7 +127,7 @@ impl CombinedServer {
             ));
         }
         let session_id = event.get(HOOK_EVENT_FIELD_SESSION_ID).cloned();
-        let turn_id = event.get(HOOK_EVENT_FIELD_TURN_ID).cloned();
+        let _turn_id = event.get(HOOK_EVENT_FIELD_TURN_ID).cloned();
         let _last_assistant_message = event.get(HOOK_EVENT_FIELD_LAST_ASSISTANT_MESSAGE).cloned();
         let _transcript_path = event.get(HOOK_EVENT_FIELD_TRANSCRIPT_PATH).cloned();
         let cwd = event.get(HOOK_EVENT_FIELD_CWD).cloned();
@@ -123,10 +139,6 @@ impl CombinedServer {
         let timestamp = OffsetDateTime::now_utc()
             .format(&Rfc3339)
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
-        let _message_name = format_message_name(
-            &session_id.as_ref().and_then(|v| v.as_str()).unwrap_or(""),
-            &turn_id.as_ref().and_then(|v| v.as_str()).unwrap_or(""),
-        );
         let mut hypatia_lab =
             hypatia::Lab::new().map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
         let mut session_hook_log = OpenOptions::new()
@@ -249,6 +261,7 @@ impl CombinedServer {
         let message_name = format_message_name(
             &session_id.as_ref().and_then(|v| v.as_str()).unwrap_or(""),
             &turn_id.as_ref().and_then(|v| v.as_str()).unwrap_or(""),
+            MessageRole::Assistant,
         );
         let mut hypatia_lab =
             hypatia::Lab::new().map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
@@ -359,6 +372,7 @@ impl CombinedServer {
         let message_name = format_message_name(
             &session_id.as_ref().and_then(|v| v.as_str()).unwrap_or(""),
             &turn_id.as_ref().and_then(|v| v.as_str()).unwrap_or(""),
+            MessageRole::User,
         );
         let prompt_str = prompt
             .and_then(|p| p.as_str().map(|s| s.to_string()))
@@ -523,5 +537,19 @@ If TRIGGER:summary — too many unsummarized messages: follow the summary cascad
         Ok(Json(
             json!({"continue": true, "hookSpecificOutput": {"hookEventName": event_name, "additionalContext": context_str}}),
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn message_names_differ_by_role() {
+        let user = format_message_name("s1", "t1", MessageRole::User);
+        let assistant = format_message_name("s1", "t1", MessageRole::Assistant);
+        assert_eq!(user, "msg_s1_t1_u");
+        assert_eq!(assistant, "msg_s1_t1_a");
+        assert_ne!(user, assistant);
     }
 }
