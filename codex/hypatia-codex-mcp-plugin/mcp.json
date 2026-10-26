@@ -1,0 +1,9 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "hypatia_memory": {
+      "type": "streamable-http",
+      "url": "http://localhost:8080/mcp"
+    }
+  }
+}

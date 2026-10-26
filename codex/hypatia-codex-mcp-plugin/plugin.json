@@ -1,0 +1,31 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "hypatia-codex-mcp-plugin",
+  "version": "0.1.0",
+  "description": "Durable agent memory backed by a local hypatia-mcp-server: MCP tools, lifecycle hooks, and skills.",
+  "author": {
+    "name": "Ryan Gao",
+    "url": "https://github.com/maxshine"
+  },
+  "homepage": "https://github.com/maxshine/hypatia-mcp-server",
+  "repository": "https://github.com/maxshine/hypatia-mcp-server",
+  "license": "MIT",
+  "keywords": ["memory", "hypatia", "mcp", "hooks", "codex"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Hypatia Memory",
+        "shortDescription": "Durable agent memory via a local hypatia-mcp-server",
+        "longDescription": "Connects Codex to a locally running hypatia-mcp-server, records session messages through lifecycle hooks, and provides skills for working with the Hypatia knowledge graph.",
+        "developerName": "Ryan Gao",
+        "category": "Productivity",
+        "capabilities": ["Interactive", "Read", "Write"],
+        "websiteURL": "https://github.com/maxshine/hypatia-mcp-server",
+        "defaultPrompt": [
+          "Remember this project's conventions",
+          "Recall what we decided about this topic"
+        ]
+      }
+    }
+  }
+}
