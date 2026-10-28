@@ -1,6 +1,6 @@
 ---
 name: hypatia
-description: "Interact with the Hypatia AI memory system using natural language. Translate user requests into calls to the hypatia_memory MCP tools for knowledge CRUD, statement (RDF triple) management, JSE queries, full-text search, vector similarity search, and shelf management. Use when the user mentions memories, knowledge bases, knowledge graphs, triples, statements, relationships, or shelves, or asks to store, recall, remember, record, save, find, or search information in Hypatia. Also use when the user wants to create or explore relationships between concepts, query existing knowledge, or manage shelves. Examples: 'remember that Rust is a systems language', 'find everything about Alice', 'record that Alice knows Bob', 'search for programming', 'show all knowledge', 'list shelves'."
+description: "Interact with the Hypatia AI memory system using natural language. Translate user requests into calls to the hypatia_memory MCP tools for knowledge CRUD, statement (RDF triple) management, JSE queries, full-text search, vector similarity search, tag and scope vocabulary, and shelf management. Use when the user mentions memories, knowledge bases, knowledge graphs, triples, statements, relationships, or shelves, or asks to store, recall, remember, record, save, find, or search information in Hypatia. Also use when the user wants to create or explore relationships between concepts, query existing knowledge, or manage shelves. Examples: 'remember that Rust is a systems language', 'find everything about Alice', 'record that Alice knows Bob', 'search for programming', 'show all knowledge', 'list shelves', 'what tags exist?'."
 ---
 
 # Hypatia Query Skill
@@ -29,6 +29,10 @@ in a loop.
 | `get_shelf_status` | Backend, embedder, attention notes, embedding debt | `shelf_name` |
 | `list_models` | Local embedding models available | — |
 | `list_archives` | List `archive://` files of a shelf | `shelf_name` |
+| `list_shelf_scopes` | Every scope in use, with how many entries carry it | `shelf_name` |
+| `check_shelf_scope_existence` | Whether one exact scope is in use | `name`, `shelf` |
+| `list_shelf_tags` | Every tag in use, with how many entries carry it | `shelf_name` |
+| `check_shelf_tag_existence` | Whether one exact tag is in use | `name`, `shelf` |
 | `create_knowledge` | Create a knowledge entry | `name`, `data`, `tags`, `synonyms`, `figures`, `scopes`, `embed`, `shelf` |
 | `get_knowledge` | Read a knowledge entry by exact name | `name`, `shelf` |
 | `update_knowledge` | Patch a knowledge entry | `name` + any of `data`, `tags`, `synonyms`, `figures`, `scopes`, `embed`, `shelf` |
@@ -42,8 +46,9 @@ in a loop.
 
 General conventions:
 
-- `shelf` is optional and defaults to `"default"`. The plugin's hooks always read and write
-  the `default` shelf, so omit `shelf` unless the user names another one.
+- `shelf` (and `shelf_name` on the shelf-level tools) is optional and defaults to
+  `"default"`. The plugin's hooks always read and write the `default` shelf, so omit it unless
+  the user names another one.
 - `tags`, `scopes`, `figures` and knowledge `synonyms` are **JSON arrays of strings**, not
   comma-separated strings.
 - Results come back as JSON. `query`, `search` and `similar` return
@@ -72,7 +77,7 @@ referenced via `archive://` paths.
 
 | User says | Tool call |
 |---|---|
-| "list archives" / "show all files" | `list_archives {"shelf_name": "default"}` |
+| "list archives" / "show all files" | `list_archives {}` |
 
 Storing a new archive file or copying one out is not available through the MCP server. If
 the user asks for that, say so instead of improvising.
@@ -112,24 +117,36 @@ scope is the empty string `""` as an element of the list.**
 ### Checking scopes and tags already in use
 
 A scope or tag you invent is not an error — the entry is stored, and every later lookup by
-the value you meant misses it. Check before you write. There is no vocabulary-listing tool, so
-probe with `$has` and a small limit:
+the value you meant misses it. Check before you write:
 
 ```json
-{"$knowledge": [["$has", "scopes", "my-project"]], "limit": 1}
-{"$knowledge": [["$has", "tags", "rule"]], "limit": 1}
-{"$statement": [["$has", "scopes", "my-project"]], "limit": 1}
+list_shelf_scopes {}
+list_shelf_tags {}
+check_shelf_scope_existence {"name": "my-project"}
+check_shelf_tag_existence {"name": "rule"}
 ```
 
-A non-empty `rows` array means the value is in use. If it is not, look at the `scopes`/`tags`
-of a sample of related entries (for example `{"$knowledge": [["$has", "tags", "rule"]], "limit": 50}`)
-and reuse the spelling already there: if the shelf holds `my-app` and you were about to write
-`my_app`, write `my-app`.
+- `list_shelf_scopes` returns `{"shelf_name": "...", "scopes": {"<value>": <entries>, ...}}`
+  and `list_shelf_tags` returns the same shape under `"tags"`. The counts cover knowledge
+  **and** statements. An empty map can also mean the shelf could not be read (for example it
+  is not connected), so check `list_shelves` if a populated shelf comes back empty.
+- The global scope appears as the key `""`. Use exactly that value when writing it back; never
+  write a display label such as `(global)`. An entry that declares no scopes at all is not
+  counted as global.
+- `check_shelf_scope_existence` / `check_shelf_tag_existence` return `"exists": true|false` for
+  one exact value; `{"name": ""}` checks the global scope. Matching is exact, so `rule` and
+  `rules` are different tags.
+
+If a value you were about to write is not in use, list the vocabulary and reuse the spelling
+already there: if the shelf holds `my-app` and you were about to write `my_app`, write `my-app`.
+Introduce a genuinely new value only when nothing existing fits.
 
 | User says | Tool call |
 |---|---|
-| "is there already a `rule` tag?" | `query {"jse": {"$knowledge": [["$has", "tags", "rule"]], "limit": 1}}` |
-| "is my-project used as a scope?" | `query {"jse": {"$knowledge": [["$has", "scopes", "my-project"]], "limit": 1}}` |
+| "what scopes/projects are in here?" | `list_shelf_scopes {}` |
+| "what tags exist?" / "which labels are used?" | `list_shelf_tags {}` |
+| "is there already a `rule` tag?" | `check_shelf_tag_existence {"name": "rule"}` |
+| "is my-project used as a scope?" | `check_shelf_scope_existence {"name": "my-project"}` |
 
 ## Knowledge CRUD
 
@@ -617,6 +634,7 @@ When the request is ambiguous, follow this priority:
 7. **Content filtering** ("markdown entries", "entries with format X") → `query` with `$content`
 8. **Broad/ambiguous** ("find everything about X", "what do you know about X") → `search`
 9. **Create/store/remember** → `create_knowledge` + `create_statement` (always create relationships alongside knowledge entries)
+10. **Vocabulary** ("what tags/scopes exist?", "is X already a tag?") → `list_shelf_tags` / `list_shelf_scopes` / `check_shelf_tag_existence` / `check_shelf_scope_existence`
 
 ## Output Format
 
@@ -641,4 +659,6 @@ Present results to the user in readable form rather than dumping raw JSON, unles
   using the current date/time as the reference point. Example: "remind me tomorrow to back up
   the data" → store "remind me on 2026-08-29 to back up the data". A relative date is
   meaningless when the memory is recalled later.
+- Before writing a tag or scope you have not seen on this shelf, check it with
+  `check_shelf_tag_existence` / `check_shelf_scope_existence` and reuse an existing spelling.
 - Never store secrets (passwords, API keys, tokens).

@@ -36,7 +36,6 @@ MCP tool yet, so the skills work around them:
 
 | Missing CLI feature | Current workaround in the skills | Where |
 |---|---|---|
-| `hypatia scope list` / `scope exists`, `hypatia tag list` / `tag exists` | Probe with `query` + `$has` and `"limit": 1`; sample related entries to find existing spellings | [hypatia](skills/hypatia/SKILL.md) "Checking scopes and tags already in use"; referenced from [hypatia-memory](skills/hypatia-memory/SKILL.md) "Session Startup" |
 | `hypatia archive-store`, `hypatia archive-get` | Only `list_archives` is offered; the agent reports that storing or copying out archives is unsupported | [hypatia](skills/hypatia/SKILL.md) "Archive Files" |
 | `hypatia export` | [hypatia](skills/hypatia/SKILL.md) states export is unavailable; [hypatia-dream](skills/hypatia-dream/SKILL.md) takes a statement-level JSON backup of every triple it deletes (`~/.hypatia/backups/hypatia-dream-<SHELF>-<ts>.json`, or inline in the report) | [hypatia](skills/hypatia/SKILL.md) "Shelf Management"; [hypatia-dream](skills/hypatia-dream/SKILL.md) "Apply Changes" step 2 and report; [eval 2](skills/hypatia-dream/evals/evals.json) |
 | `hypatia connect <path>` (arbitrary path) | `connect_shelf` only opens `~/.hypatia/<shelf_name>` | [hypatia](skills/hypatia/SKILL.md) "Shelf Management" |
@@ -44,7 +43,21 @@ MCP tool yet, so the skills work around them:
 | `hypatia backfill` (full pass) | `backfill_shelf` processes one batch per call; call it repeatedly until embedding debt is zero | [hypatia](skills/hypatia/SKILL.md) "Vector Similarity Search" |
 | Current time | No MCP tool returns the time, so [hypatia-dream](skills/hypatia-dream/SKILL.md) runs `date -u` for its snapshot boundary | [hypatia-dream](skills/hypatia-dream/SKILL.md) "Preflight And Snapshot Boundary" step 3 |
 
-Adding scope/tag listing and shelf export tools would remove the two biggest workarounds.
+Adding a shelf export tool would remove the biggest remaining workaround.
+
+Resolved: `hypatia scope list` / `scope exists` and `hypatia tag list` / `tag exists` are now
+served by `list_shelf_scopes`, `check_shelf_scope_existence`, `list_shelf_tags` and
+`check_shelf_tag_existence`, and the skills use them directly.
+
+### Scope/tag tool follow-ups
+
+- [ ] On any error (for example the shelf is not connected) the four tools return an empty map
+  or `"exists": false` instead of a tool error, which reads as "not in use". Returning the error
+  would stop the agent from inventing a new spelling on a shelf it could not read.
+- [x] The existence tools now echo the value under the same key on both paths (`tag_value` for
+  tags, `scope_value` for scopes).
+- [ ] `GenericNameValueArgs` in [hypatia_memory_tools.rs](../../src/services/hypatia_memory_tools.rs)
+  is unused.
 
 ### Hook issues
 

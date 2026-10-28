@@ -1,10 +1,7 @@
 use super::combined_server::CombinedServer;
 use hypatia;
 use rmcp::{
-    handler::server::wrapper::{Json, Parameters},
-    schemars, serde,
-    serde_json::{Value, json},
-    tool, tool_router,
+    ErrorData, handler::server::wrapper::{Json, Parameters}, schemars, serde, serde_json::{Value, json}, tool, tool_router,
 };
 use std::collections::HashMap;
 
@@ -12,12 +9,20 @@ use std::collections::HashMap;
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 struct ShelfNameParams {
-    shelf_name: String,
+    shelf_name: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 struct GenericNameArgs {
     name: String,
+    shelf: Option<String>,
+}
+
+#[expect(dead_code, reason = "reserved for a future field/value tool")]
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+struct GenericNameValueArgs {
+    name: String,
+    value: String,
     shelf: Option<String>,
 }
 
@@ -229,6 +234,7 @@ impl CombinedServer {
         Parameters(ShelfNameParams { shelf_name }): Parameters<ShelfNameParams>,
     ) -> String {
         let mut hypatia_lab = hypatia::lab::Lab::new().unwrap();
+        let shelf_name = canonicalize_shelf_name(shelf_name);
         let shelf_path = dirs_home().join(".hypatia").join(&shelf_name);
         let result = hypatia_lab
             .connect_shelf(&shelf_path, Some(shelf_name.as_str()))
@@ -251,6 +257,7 @@ impl CombinedServer {
         Parameters(ShelfNameParams { shelf_name }): Parameters<ShelfNameParams>,
     ) -> String {
         let mut hypatia_lab = hypatia::lab::Lab::new().unwrap();
+        let shelf_name = canonicalize_shelf_name(shelf_name);
         hypatia_lab.disconnect_shelf(shelf_name.as_str()).unwrap();
         format!("{} hypatia shelf disconnected", shelf_name)
     }
@@ -261,6 +268,7 @@ impl CombinedServer {
         Parameters(ShelfNameParams { shelf_name }): Parameters<ShelfNameParams>,
     ) -> Json<ShelfStatus> {
         let hypatia_lab = hypatia::lab::Lab::new().unwrap();
+        let shelf_name = canonicalize_shelf_name(shelf_name);
         let status = hypatia_lab.shelf_status(&shelf_name).unwrap();
         Json(ShelfStatus {
             name: status.name,
@@ -286,7 +294,7 @@ impl CombinedServer {
         &self,
         Parameters(ShelfNameParams { shelf_name }): Parameters<ShelfNameParams>,
     ) -> Json<ToolResult> {
-        let shelf = canonicalize_shelf_name(Some(shelf_name));
+        let shelf = canonicalize_shelf_name(shelf_name);
         let mut hypatia_lab = hypatia::lab::Lab::new().unwrap();
         hypatia_lab.flush_if_overdue(&shelf).unwrap();
         let files: Vec<String> = hypatia_lab
@@ -571,5 +579,111 @@ impl CombinedServer {
             "embedding": debt(&mut hypatia_lab, &shelf)
         });
         Json(ToolResult { result: result })
+    }
+
+    #[tool(description = "List available tags and their occurrences for a shelf")]
+    fn list_shelf_tags(
+        &self,
+        Parameters(ShelfNameParams { shelf_name }): Parameters<ShelfNameParams>,
+    ) -> Result<Json<ToolResult>, ErrorData> {
+        let hypatia_lab = hypatia::lab::Lab::new().unwrap();
+        let shelf_name = canonicalize_shelf_name(shelf_name);
+        let tag_tuples = hypatia_lab.field_values(&shelf_name, "tags")
+            .map_err(|e| ErrorData::internal_error(e.to_string(), None));
+        if let Ok(tags) = tag_tuples {
+            let tags: HashMap<String, i64> = tags.into_iter().collect();
+            return Ok(Json(ToolResult {
+                result: json!({
+                    "shelf_name": shelf_name,
+                    "tags": tags,
+                }),
+            }));
+        }
+        return Ok(Json(ToolResult {
+            result: json!({
+                "shelf_name": shelf_name,
+                "tags": HashMap::<String, i64>::new(),
+            }),
+        }));
+    }
+
+    #[tool(description = "Check a tag's existence in the available tags for a shelf")]
+    fn check_shelf_tag_existence(
+        &self,
+        Parameters(GenericNameArgs { name, shelf}): Parameters<GenericNameArgs>,
+    ) -> Result<Json<ToolResult>, ErrorData> {
+        let hypatia_lab = hypatia::lab::Lab::new().unwrap();
+        let shelf_name = canonicalize_shelf_name(shelf);
+        let tag_existence = hypatia_lab.field_value_exists(&shelf_name, "tags", &name)
+            .map_err(|e| ErrorData::internal_error(e.to_string(), None));
+        if let Ok(exists) = tag_existence {
+            return Ok(Json(ToolResult {
+                result: json!({
+                    "shelf_name": shelf_name,
+                    "tag_value": name,
+                    "exists": exists
+                }),
+            }));
+        }
+        return Ok(Json(ToolResult {
+            result: json!({
+                "shelf_name": shelf_name,
+                "tag_value": name,
+                "exists": false,
+            }),
+        }));
+    }
+
+    #[tool(description = "List available scopes and their occurrences for a shelf")]
+    fn list_shelf_scopes(
+        &self,
+        Parameters(ShelfNameParams { shelf_name }): Parameters<ShelfNameParams>,
+    ) -> Result<Json<ToolResult>, ErrorData> {
+        let hypatia_lab = hypatia::lab::Lab::new().unwrap();
+        let shelf_name = canonicalize_shelf_name(shelf_name);
+        let scope_tuples = hypatia_lab.field_values(&shelf_name, "scopes")
+            .map_err(|e| ErrorData::internal_error(e.to_string(), None));
+        if let Ok(scopes) = scope_tuples {
+            let scopes: HashMap<String, i64> = scopes.into_iter().collect();
+            return Ok(Json(ToolResult {
+                result: json!({
+                    "shelf_name": shelf_name,
+                    "scopes": scopes,
+                }),
+            }));
+        }
+        return Ok(Json(ToolResult {
+            result: json!({
+                "shelf_name": shelf_name,
+                "scopes": HashMap::<String, i64>::new(),
+            }),
+        }));
+    }
+
+    #[tool(description = "Check a scope's existence in the available scopes for a shelf")]
+    fn check_shelf_scope_existence(
+        &self,
+        Parameters(GenericNameArgs { name, shelf}): Parameters<GenericNameArgs>,
+    ) -> Result<Json<ToolResult>, ErrorData> {
+        let hypatia_lab = hypatia::lab::Lab::new().unwrap();
+        let shelf_name = canonicalize_shelf_name(shelf);
+        let tag_existence = hypatia_lab.field_value_exists(&shelf_name, "scopes", &name)
+            .map_err(|e| ErrorData::internal_error(e.to_string(), None));
+        if let Ok(exists) = tag_existence {
+            return Ok(Json(ToolResult {
+                result: json!({
+                    "shelf_name": shelf_name,
+                    "scope_value": name,
+                    "exists": exists
+                }),
+            }));
+        }
+        return Ok(Json(ToolResult {
+            result: json!({
+                "shelf_name": shelf_name,
+                "scope_value": name,
+                "exists": false,
+            }),
+        }));
     }
 }

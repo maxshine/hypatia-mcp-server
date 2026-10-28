@@ -45,6 +45,7 @@ pub fn format_message_name(session_id: &str, turn_id: &str, role: MessageRole) -
     format!("msg_{}_{}_{}", session_id, turn_id, role.suffix())
 }
 
+#[expect(dead_code)]
 fn parse_tags(raw: &str) -> Vec<String> {
     if raw.is_empty() {
         Vec::new()
@@ -73,6 +74,7 @@ fn parse_flat_synonyms(raw: &str) -> Option<hypatia::model::content::Synonyms> {
 
 /// Comma-separated scopes. A trailing comma adds the empty-string global scope, so `","`
 /// is global only and `"p,"` is project plus global; `""` stores no scope at all.
+#[expect(dead_code)]
 fn parse_scopes(raw: &str) -> Vec<String> {
     let mut scopes = parse_list(raw);
     if raw.ends_with(',') && !scopes.contains(&String::new()) {

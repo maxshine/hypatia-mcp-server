@@ -70,9 +70,25 @@ query {"jse": ["$knowledge", ["$has", "tags", "rule"], ["$or", ["$has", "scopes"
 query {"jse": ["$knowledge", ["$has", "tags", "taboo"], ["$or", ["$has", "scopes", "<PROJECT>"], ["$has", "scopes", ""]]]}
 ```
 
-Before introducing a tag outside the vocabulary in [Important Rules](#important-rules), check
-that it is not a respelling of one already in use (see "Checking scopes and tags already in use"
-in the `hypatia` skill).
+Then confirm the project scope is the spelling this shelf already uses:
+
+```json
+check_shelf_scope_existence {"name": "<PROJECT>"}
+```
+
+- `"exists": true` → nothing to do.
+- `"exists": false` → call `list_shelf_scopes {}`. If it is a new project with no near match,
+  carry on: the hooks have just started writing under `<PROJECT>`. If a near-identical scope
+  already exists (for example `my-app` while `<PROJECT>` is `my_app`, because the checkout
+  directory was renamed), tell the user once: rules, taboos and memories under that other
+  spelling are not injected into this session. Keep writing under `<PROJECT>` so your entries
+  stay consistent with the hooks' message log, and let the user decide whether to migrate the
+  old entries.
+
+Before introducing a tag outside the vocabulary in [Important Rules](#important-rules), check it
+with `check_shelf_tag_existence {"name": "<tag>"}`; if it is not in use, look at
+`list_shelf_tags {}` and reuse an existing spelling instead of creating a near-duplicate (see
+"Checking scopes and tags already in use" in the `hypatia` skill).
 
 ---
 
@@ -322,6 +338,9 @@ similar {"query": "<one-line gist>", "target": "knowledge", "exclude_tags": ["me
 
 ### Phase 7: Store
 
+Pick `<topic-tag>` from `list_shelf_tags {}` when an existing tag fits (for example `rust`, not a
+new `rust-lang`).
+
 ```json
 create_knowledge {"name": "wu-<DATE>-<slug>", "data": "<synthesized content>", "tags": ["memory", "work-unit", "<topic-tag>"], "scopes": ["<PROJECT>"]}
 create_statement {"head": "wu-<DATE>-<slug>", "relation": "is_a", "tail": "work-unit", "scopes": ["<PROJECT>"]}
@@ -349,7 +368,7 @@ actually asking you to remember, recall, or forget something. If not, ignore the
 2. Classify it as `rule` (something to follow), `taboo` (something to avoid), or general `memory`.
 3. Choose scopes: `["<PROJECT>"]` for this project only, or `["<PROJECT>", ""]` to also make
    it global. The global scope is the `""` element; a rule without it is never injected into
-   other projects.
+   other projects. Choose `<topic-tag>`s from `list_shelf_tags {}` where an existing tag fits.
 4. Deduplicate as in Phase 6. If an existing entry says the same thing, update it instead of
    creating a near-duplicate.
 5. Create it:
@@ -405,9 +424,9 @@ Keep memory reports to a single short line after your main answer:
 4. **Be conservative with work-unit quality** — skip when unsure.
 5. **Synthesize, don't transcribe** — compress summaries and memories.
 6. **Correction chains are gold** — the most valuable memories come from mistakes.
-7. **Use structured tags** — `message`, `session`, `summary`, `summary <N>`, `memory`, `work-unit`, `rule`, `taboo`.
+7. **Use structured tags** — `message`, `session`, `summary`, `summary <N>`, `memory`, `work-unit`, `rule`, `taboo`. For topic tags, reuse what `list_shelf_tags` already shows before inventing a new one.
 8. **Don't interrupt the user** — memory operations are background tasks.
-9. **Scope discipline** — every entry and statement you write carries `"scopes": ["<PROJECT>"]`; global rules add `""`. Omitting `scopes` stores no scope, and the entry drops out of every scoped lookup.
+9. **Scope discipline** — every entry and statement you write carries `"scopes": ["<PROJECT>"]`; global rules add `""`. Omitting `scopes` stores no scope, and the entry drops out of every scoped lookup. A new spelling is stored without complaint and is then invisible to every lookup that uses the old one, so check with `check_shelf_scope_existence` / `list_shelf_scopes` first.
 
 ## Graph Schema Reference
 
