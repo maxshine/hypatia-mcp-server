@@ -1,0 +1,73 @@
+{
+  "description": "Record Claude Code session messages and inject Hypatia memory context",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "mcp_tool",
+            "server": "plugin:hypatia-claude-mcp-plugin:hypatia_memory",
+            "tool": "agent_session_start",
+            "input": {
+              "hook_event_name": "${hook_event_name}",
+              "session_id": "${session_id}",
+              "turn_id": "",
+              "last_assistant_message": "",
+              "source": "${source}",
+              "cwd": "${cwd}",
+              "transcript_path": "${transcript_path}"
+            },
+            "timeout": 10,
+            "statusMessage": "Loading Hypatia memory context at session beginning"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "mcp_tool",
+            "server": "plugin:hypatia-claude-mcp-plugin:hypatia_memory",
+            "tool": "user_prompt_submission",
+            "input": {
+              "hook_event_name": "${hook_event_name}",
+              "session_id": "${session_id}",
+              "turn_id": "${prompt_id}",
+              "prompt": "${prompt}",
+              "last_assistant_message": "",
+              "cwd": "${cwd}",
+              "permission_mode": "${permission_mode}",
+              "transcript_path": "${transcript_path}"
+            },
+            "timeout": 10,
+            "statusMessage": "Recording user prompt"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "mcp_tool",
+            "server": "plugin:hypatia-claude-mcp-plugin:hypatia_memory",
+            "tool": "agent_stop",
+            "input": {
+              "hook_event_name": "${hook_event_name}",
+              "session_id": "${session_id}",
+              "turn_id": "${prompt_id}",
+              "last_assistant_message": "${last_assistant_message}",
+              "cwd": "${cwd}",
+              "stop_hook_active": "${stop_hook_active}",
+              "permission_mode": "${permission_mode}",
+              "transcript_path": "${transcript_path}"
+            },
+            "timeout": 10,
+            "statusMessage": "Recording assistant message"
+          }
+        ]
+      }
+    ]
+  }
+}

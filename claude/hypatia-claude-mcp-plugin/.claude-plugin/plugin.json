@@ -1,0 +1,14 @@
+{
+  "name": "hypatia-claude-mcp-plugin",
+  "displayName": "Hypatia Memory",
+  "version": "0.1.0",
+  "description": "Durable agent memory backed by a local hypatia-mcp-server: MCP tools, lifecycle hooks, and skills.",
+  "author": {
+    "name": "Ryan Gao",
+    "url": "https://github.com/maxshine"
+  },
+  "homepage": "https://github.com/maxshine/hypatia-mcp-server",
+  "repository": "https://github.com/maxshine/hypatia-mcp-server",
+  "license": "MIT",
+  "keywords": ["memory", "hypatia", "mcp", "hooks", "knowledge-graph"]
+}

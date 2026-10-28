@@ -1,0 +1,92 @@
+{
+  "skill_name": "hypatia-dream",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run a sleep-time knowledge-graph consolidation on the Hypatia shelf named research. Don't change any data, just give me a report. This shelf has no hypatia-dream watermark; a new node 'JSE Query Planner' states explicitly that it refines 'JSE Query Engine', but there is no relationship between the two yet. It also contains msg_123_4_a belongTo session-123.",
+      "expected_output": "Resolve report mode, treat the run as a first pass, inspect the full statement graph and relevant Knowledge bodies through the query and get_knowledge tools, exclude the message/session operational relationship, and report a high-confidence candidate `(JSE Query Planner, refines, JSE Query Engine)` without calling create_statement, delete_statement, create_knowledge, or writing a backup.",
+      "files": [],
+      "expectations": [
+        "Selects report mode and schedules no state-changing tool call or watermark.",
+        "Treats the missing marker as a first pass with a fixed snapshot boundary.",
+        "Proposes (JSE Query Planner, refines, JSE Query Engine) with explicit evidence.",
+        "Excludes the belongTo message/session relationship from semantic consolidation."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Run hypatia-dream --mode apply on the default shelf. The last successful watermark is 2026-03-01 09:00:00. New knowledge states explicitly that 'SQLite Storage' has replaced 'DuckDB Storage' as the only structured store; the graph still has `(Hypatia, uses, DuckDB Storage)`, which has no temporal bound and empty scopes and data. Please fix the relationship.",
+      "expected_output": "Use the marker's processed_through value and a fixed snapshot boundary, identify an explicit contradiction rather than a merely related concept, re-query the reviewed triple with the $triple exact-key form before mutation, capture a statement-level backup of the source row before the replacement, call create_statement for `(Hypatia, uses, SQLite Storage)` first and verify it, only then call delete_statement for `(Hypatia, uses, DuckDB Storage)`, verify the removal, create a successful apply marker with create_knowledge, and return the required report with exact changes and the backup location.",
+      "files": [],
+      "expectations": [
+        "Uses the marker's processed_through value rather than its creation time.",
+        "Re-queries the exact old triple and captures its full row as a backup before the replacement.",
+        "Creates (Hypatia, uses, SQLite Storage) BEFORE deleting (Hypatia, uses, DuckDB Storage), never the reverse order.",
+        "Verifies both the creation and the removal, and writes a successful apply marker only after verification."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Dream over my default knowledge base, mode report. The new entry 'Database Notes' and the old entry 'Distributed Systems' both mention consistency, but there is no explicit provenance, category, refinement, extension, or supersession relationship; the graph also has a `(Storage, uses, DuckDB)` triple with a non-empty temporal bound.",
+      "expected_output": "Report no semantic change for the lexical overlap, avoid adding a vague related_to triple, and explain that a time-bounded statement is not eligible for replacement because create_statement cannot recreate temporal bounds. Note that the MCP tools never set tr_start/tr_end, so this guard exists for statements written by other Hypatia clients.",
+      "files": [],
+      "expectations": [
+        "Does not add a related_to or other semantic triple from lexical overlap alone.",
+        "Does not replace the time-bounded Storage uses DuckDB triple.",
+        "Keeps report mode read-only and leaves the watermark unchanged."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Done for the day. Sweet dreams for the default Hypatia shelf.",
+      "expected_output": "Treat the two closeout signals as an explicit request for apply mode even though --mode is omitted; begin the safe apply workflow rather than returning a report-only plan.",
+      "files": [],
+      "expectations": [
+        "Selects apply mode without asking for confirmation.",
+        "Explains that the closeout wording is the mode signal, then follows the normal preflight, backup, verification, and watermark rules."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Dream on the default knowledge base first and show me how the knowledge relates; don't modify anything yet.",
+      "expected_output": "Treat the preview wording as report mode and make no graph or watermark mutation.",
+      "files": [],
+      "expectations": [
+        "Selects report mode from the preview signals.",
+        "Does not schedule statement mutations or watermark creation."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "This phase is over, but don't modify anything yet — sweet dreams.",
+      "expected_output": "Detect the conflicting apply and report signals, ask the user to choose a mode, and make no state change.",
+      "files": [],
+      "expectations": [
+        "Does not prioritize the closeout signal over the preview signal.",
+        "Requests a mode choice and performs no graph mutation or watermark update."
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Done for the day, sweet dreams for the default shelf. This shelf is large: the full relationship-graph query returns a total_count exactly equal to the 10000-row limit.",
+      "expected_output": "Detect that the returned row count equals the query limit, treat the graph read as truncated rather than complete, and stop with a blocker report instead of applying any addition or replacement against a partial graph.",
+      "files": [],
+      "expectations": [
+        "Compares the returned row count against the limit and identifies the read as truncated.",
+        "Applies no statement mutation and writes no watermark.",
+        "Reports the truncation as a concrete blocker rather than proceeding on the rows it did receive."
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Run hypatia-dream --mode apply on the default shelf. New knowledge states explicitly that 'Parquet Export' has replaced 'CSV Export'; the old triple `(Pipeline, emits, CSV Export)` has no temporal bound, but its content.tags is [\"pipeline\",\"legacy\"].",
+      "expected_output": "Recognize the contradiction but refuse to apply the replacement, because create_statement has no tags argument and the source statement's tags would be silently dropped. Report the candidate under No Change with the metadata-preservation reason and leave the graph unchanged.",
+      "files": [],
+      "expectations": [
+        "Does not delete or replace (Pipeline, emits, CSV Export).",
+        "Names the non-empty content.tags as the reason the statement is ineligible for replacement.",
+        "Reports the candidate rather than silently dropping it or silently losing the tags."
+      ]
+    }
+  ]
+}
