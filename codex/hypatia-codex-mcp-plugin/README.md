@@ -1,5 +1,8 @@
 # Hypatia Memory plugin for Codex
 
+**Version 1.0.0**, for [`hypatia-mcp-server`](../../README.md#version) 1.0.0. The plugin and the
+server share one version number; use the plugin release that matches your server.
+
 Scaffold for the Codex plugin that integrates with the `hypatia-mcp-server` in this repository.
 It uses the portable Agent Plugins layout (root `plugin.json` and `mcp.json`).
 

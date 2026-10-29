@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "hypatia-codex-mcp-plugin",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Durable agent memory backed by a local hypatia-mcp-server: MCP tools, lifecycle hooks, and skills.",
   "author": {
     "name": "Ryan Gao",

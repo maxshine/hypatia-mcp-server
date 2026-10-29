@@ -1,7 +1,7 @@
 {
   "name": "hypatia-claude-mcp-plugin",
   "displayName": "Hypatia Memory",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Durable agent memory backed by a local hypatia-mcp-server: MCP tools, lifecycle hooks, and skills.",
   "author": {
     "name": "Ryan Gao",

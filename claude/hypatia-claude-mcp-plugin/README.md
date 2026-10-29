@@ -1,5 +1,10 @@
 # Hypatia Memory plugin for Claude Code
 
+**Version 1.0.0**, for [`hypatia-mcp-server`](../../README.md#version) 1.0.0. The plugin and the
+server share one version number; use the plugin release that matches your server. Claude Code
+pins an installed plugin to the `version` in [plugin.json](.claude-plugin/plugin.json), so users
+get updates only when that number changes.
+
 Claude Code plugin that integrates with the `hypatia-mcp-server` in this repository. It is a
 port of the [Codex plugin](../../codex/hypatia-codex-mcp-plugin/README.md): the same MCP server,
 hooks and skills, adapted to Claude Code's plugin layout and hook inputs.
