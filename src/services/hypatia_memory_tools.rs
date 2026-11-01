@@ -87,6 +87,8 @@ struct StatementTripleRequestParameter {
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 struct QueryRequestParameter {
+    /// JSE query, e.g. ["$knowledge", ["$has", "tags", "rule"]] or
+    /// {"$statement": [["$triple", "Alice", "$*", "$*"]], "limit": 10}
     jse: Value,
     shelf: Option<String>,
 }
@@ -107,6 +109,8 @@ struct SimilarityRequestParameter {
     limit: Option<i64>,
     tags: Option<Vec<String>>,
     exclude_tags: Option<Vec<String>>,
+    /// JSE condition applied before ranking, e.g. ["$has", "scopes", "my-app"];
+    /// $search, $similar and $k-hop are not allowed
     #[serde(rename = "where")]
     condition: Option<Value>,
     shelf: Option<String>,
