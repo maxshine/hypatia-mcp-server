@@ -1,7 +1,11 @@
 use super::combined_server::CombinedServer;
 use hypatia;
 use rmcp::{
-    ErrorData, handler::server::wrapper::{Json, Parameters}, schemars, serde, serde_json::{Value, json}, tool, tool_router,
+    ErrorData,
+    handler::server::wrapper::{Json, Parameters},
+    schemars, serde,
+    serde_json::{Value, json},
+    tool, tool_router,
 };
 use std::collections::HashMap;
 
@@ -236,80 +240,100 @@ impl CombinedServer {
     fn connect_shelf(
         &self,
         Parameters(ShelfNameParams { shelf_name }): Parameters<ShelfNameParams>,
-    ) -> String {
-        let mut hypatia_lab = hypatia::lab::Lab::new().unwrap();
+    ) -> Result<String, ErrorData> {
+        let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
         let shelf_name = canonicalize_shelf_name(shelf_name);
         let shelf_path = dirs_home().join(".hypatia").join(&shelf_name);
         let result = hypatia_lab
             .connect_shelf(&shelf_path, Some(shelf_name.as_str()))
-            .unwrap();
-        format!("{} hypatia shelf connected", result)
+            .map_err(|e| {
+                ErrorData::internal_error(format!("Failed to connect shelf: {e}"), None)
+            })?;
+        Ok(format!("{} hypatia shelf connected", result))
     }
     #[tool(description = "List available hypatia memory shelves")]
-    fn list_shelves(&self) -> Json<ShelfList> {
-        let hypatia_lab = hypatia::lab::Lab::new().unwrap();
+    fn list_shelves(&self) -> Result<Json<ShelfList>, ErrorData> {
+        let hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
         let shelves = hypatia_lab.list_shelves();
         let ret: Vec<String> = shelves
             .iter()
             .map(|(name, _, _)| name.to_string())
             .collect();
-        Json(ShelfList { shelves: ret })
+        Ok(Json(ShelfList { shelves: ret }))
     }
     #[tool(description = "Disconnect a hypatia memory shelf from registry")]
     fn disconnect_shelf(
         &self,
         Parameters(ShelfNameParams { shelf_name }): Parameters<ShelfNameParams>,
-    ) -> String {
-        let mut hypatia_lab = hypatia::lab::Lab::new().unwrap();
+    ) -> Result<String, ErrorData> {
+        let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
         let shelf_name = canonicalize_shelf_name(shelf_name);
-        hypatia_lab.disconnect_shelf(shelf_name.as_str()).unwrap();
-        format!("{} hypatia shelf disconnected", shelf_name)
+        hypatia_lab
+            .disconnect_shelf(shelf_name.as_str())
+            .map_err(|e| {
+                ErrorData::internal_error(format!("Failed to disconnect shelf: {e}"), None)
+            })?;
+        Ok(format!("{} hypatia shelf disconnected", shelf_name))
     }
 
     #[tool(description = "Show a shelf general status")]
     fn get_shelf_status(
         &self,
         Parameters(ShelfNameParams { shelf_name }): Parameters<ShelfNameParams>,
-    ) -> Json<ShelfStatus> {
-        let hypatia_lab = hypatia::lab::Lab::new().unwrap();
+    ) -> Result<Json<ShelfStatus>, ErrorData> {
+        let hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
         let shelf_name = canonicalize_shelf_name(shelf_name);
-        let status = hypatia_lab.shelf_status(&shelf_name).unwrap();
-        Json(ShelfStatus {
+        let status = hypatia_lab.shelf_status(&shelf_name).map_err(|e| {
+            ErrorData::internal_error(format!("Failed to get shelf status: {e}"), None)
+        })?;
+        Ok(Json(ShelfStatus {
             name: status.name,
             postgres: status.postgres,
             embedder: status.embedder,
             semantic_search_off: status.semantic_search_off.unwrap_or_default(),
             attention: status.attention.unwrap_or_default(),
             has_debt: status.debt.pending_knowledge > 0 || status.debt.pending_statement > 0,
-        })
+        }))
     }
 
     #[tool(description = "List local models available for hypatia memory")]
-    fn list_models(&self) -> Json<ModelList> {
+    fn list_models(&self) -> Result<Json<ModelList>, ErrorData> {
         let models: Vec<String> = hypatia::embedding::config::list_local_models()
             .into_iter()
             .map(|(name, _)| name.to_string())
             .collect();
-        Json(ModelList { models })
+        Ok(Json(ModelList { models }))
     }
 
     #[tool(description = "List archives for a hypatia memory shelf")]
     fn list_archives(
         &self,
         Parameters(ShelfNameParams { shelf_name }): Parameters<ShelfNameParams>,
-    ) -> Json<ToolResult> {
+    ) -> Result<Json<ToolResult>, ErrorData> {
         let shelf = canonicalize_shelf_name(shelf_name);
-        let mut hypatia_lab = hypatia::lab::Lab::new().unwrap();
-        hypatia_lab.flush_if_overdue(&shelf).unwrap();
+        let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
+        hypatia_lab
+            .flush_if_overdue(&shelf)
+            .map_err(|e| ErrorData::internal_error(format!("Failed to flush shelf: {e}"), None))?;
         let files: Vec<String> = hypatia_lab
             .list_archives(&shelf)
-            .unwrap()
+            .map_err(|e| ErrorData::internal_error(format!("Failed to list archives: {e}"), None))?
             .into_iter()
             .map(|f| format!("archive://{f}"))
             .collect();
-        Json(ToolResult {
+        Ok(Json(ToolResult {
             result: json!({ "files": files }),
-        })
+        }))
     }
 
     #[tool(description = "Create a knowledge record for a hypatia memory shelf")]
@@ -325,19 +349,22 @@ impl CombinedServer {
             embed,
             shelf,
         }): Parameters<KnowledgeParameter>,
-    ) -> Json<ToolResult> {
-        let mut hypatia_lab = hypatia::lab::Lab::new().unwrap();
+    ) -> Result<Json<ToolResult>, ErrorData> {
+        let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
         let shelf = canonicalize_shelf_name(Some(shelf.unwrap_or_default()));
-        hypatia_lab.flush_if_overdue(&shelf).unwrap();
+        hypatia_lab.flush_if_overdue(&shelf).map_err(|e| {
+            ErrorData::internal_error(format!("Failed to flush shelf embedding state: {e}"), None)
+        })?;
         if hypatia_lab.get_knowledge(&shelf, &name).is_ok() {
-            return Json(ToolResult {
-                result: json!({
-                    "error": format!(
-                        "knowledge '{}' already exists; use knowledge_update to change it",
-                        name
-                    )
-                }),
-            });
+            return Err(ErrorData::invalid_request(
+                format!(
+                    "knowledge '{}' already exists; use knowledge_update to change it",
+                    name
+                ),
+                None,
+            ));
         }
         let content = hypatia::model::Content::new(data.unwrap_or_default())
             .with_tags(clean_list(tags.unwrap_or_default()))
@@ -347,29 +374,38 @@ impl CombinedServer {
             .with_embed(embed);
         let k = hypatia_lab
             .create_knowledge(&shelf, &name, content)
-            .unwrap();
-        Json(ToolResult {
+            .map_err(|e| {
+                ErrorData::internal_error(format!("Failed to create knowledge: {e}"), None)
+            })?;
+        Ok(Json(ToolResult {
             result: json!({ "name": k.name, "created": true, "embedding": debt(&mut hypatia_lab, &shelf) }),
-        })
+        }))
     }
 
     #[tool(description = "Get a knowledge record from a hypatia memory shelf")]
     fn get_knowledge(
         &self,
         Parameters(GenericNameArgs { name, shelf }): Parameters<GenericNameArgs>,
-    ) -> Json<ToolResult> {
-        let mut hypatia_lab = hypatia::lab::Lab::new().unwrap();
+    ) -> Result<Json<ToolResult>, ErrorData> {
+        let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
         let shelf = canonicalize_shelf_name(shelf);
-        hypatia_lab.flush_if_overdue(&shelf).unwrap();
-        match hypatia_lab.get_knowledge(&shelf, &name).unwrap() {
-            Some(k) => Json(ToolResult {
+        hypatia_lab.flush_if_overdue(&shelf).map_err(|e| {
+            ErrorData::internal_error(format!("Failed to flush shelf embedding state: {e}"), None)
+        })?;
+        match hypatia_lab
+            .get_knowledge(&shelf, &name)
+            .map_err(|e| ErrorData::internal_error(format!("Failed to get knowledge: {e}"), None))?
+        {
+            Some(k) => Ok(Json(ToolResult {
                 result: knowledge_json(&k),
-            }),
-            None => Json(ToolResult {
+            })),
+            None => Ok(Json(ToolResult {
                 result: json!({
                     "error": format!("not found: knowledge '{}'", name)
                 }),
-            }),
+            })),
         }
     }
 
@@ -386,8 +422,10 @@ impl CombinedServer {
             embed,
             shelf,
         }): Parameters<KnowledgeParameter>,
-    ) -> Json<ToolResult> {
-        let mut hypatia_lab = hypatia::lab::Lab::new().unwrap();
+    ) -> Result<Json<ToolResult>, ErrorData> {
+        let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
         let shelf = canonicalize_shelf_name(shelf);
         let patch = hypatia::service::KnowledgePatch {
             data,
@@ -398,35 +436,46 @@ impl CombinedServer {
             embed,
         };
         if patch.is_empty() {
-            return Json(ToolResult {
-                result: json!({
-                    "error": "nothing to update: pass at least one of data, tags, synonyms, figures, scopes, embed"
-                }),
-            });
+            return Err(ErrorData::invalid_request(
+                "nothing to update: pass at least one of data, tags, synonyms, figures, scopes, embed".to_string(),
+                None,
+            ));
         }
-        hypatia_lab.flush_if_overdue(&shelf).unwrap();
-        let updated = hypatia_lab.patch_knowledge(&shelf, &name, &patch).unwrap();
-        Json(ToolResult {
+        hypatia_lab.flush_if_overdue(&shelf).map_err(|e| {
+            ErrorData::internal_error(format!("Failed to flush shelf embedding state: {e}"), None)
+        })?;
+        let updated = hypatia_lab
+            .patch_knowledge(&shelf, &name, &patch)
+            .map_err(|e| {
+                ErrorData::internal_error(format!("Failed to patch knowledge: {e}"), None)
+            })?;
+        Ok(Json(ToolResult {
             result: json!({
                 "name": updated.knowledge.name,
                 "changed": updated.changed,
                 "embedding": debt(&mut hypatia_lab, &shelf)
             }),
-        })
+        }))
     }
 
     #[tool(description = "Delete a knowledge record in a hypatia memory shelf")]
     fn delete_knowledge(
         &self,
         Parameters(GenericNameArgs { name, shelf }): Parameters<GenericNameArgs>,
-    ) -> Json<ToolResult> {
-        let mut hypatia_lab = hypatia::lab::Lab::new().unwrap();
+    ) -> Result<Json<ToolResult>, ErrorData> {
+        let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
         let shelf = canonicalize_shelf_name(shelf);
-        hypatia_lab.flush_if_overdue(&shelf).unwrap();
-        hypatia_lab.delete_knowledge(&shelf, &name).unwrap();
-        Json(ToolResult {
+        hypatia_lab.flush_if_overdue(&shelf).map_err(|e| {
+            ErrorData::internal_error(format!("Failed to flush shelf embedding state: {e}"), None)
+        })?;
+        hypatia_lab.delete_knowledge(&shelf, &name).map_err(|e| {
+            ErrorData::internal_error(format!("Failed to delete knowledge: {e}"), None)
+        })?;
+        Ok(Json(ToolResult {
             result: json!({ "name": name, "deleted": true }),
-        })
+        }))
     }
 
     #[tool(description = "Create a statement in a hypatia memory shelf")]
@@ -442,10 +491,14 @@ impl CombinedServer {
             embed,
             shelf,
         }): Parameters<StatementParameter>,
-    ) -> Json<ToolResult> {
-        let mut hypatia_lab = hypatia::lab::Lab::new().unwrap();
+    ) -> Result<Json<ToolResult>, ErrorData> {
+        let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
         let shelf = canonicalize_shelf_name(shelf);
-        hypatia_lab.flush_if_overdue(&shelf).unwrap();
+        hypatia_lab.flush_if_overdue(&shelf).map_err(|e| {
+            ErrorData::internal_error(format!("Failed to flush shelf embedding state: {e}"), None)
+        })?;
         let key = hypatia::model::StatementKey::new(&head, &relation, &tail);
         let content = hypatia::model::Content::new(data.unwrap_or_default())
             .with_synonyms(synonyms.and_then(positional_synonyms))
@@ -453,8 +506,10 @@ impl CombinedServer {
             .with_embed(embed);
         let outcome = hypatia_lab
             .create_statement(&shelf, &key, content, None, None)
-            .unwrap();
-        Json(ToolResult {
+            .map_err(|e| {
+                ErrorData::internal_error(format!("Failed to create statement: {e}"), None)
+            })?;
+        Ok(Json(ToolResult {
             result: json!({
             "head": key.head,
             "relation": key.relation,
@@ -462,7 +517,7 @@ impl CombinedServer {
             "created": outcome.created,
             "embedding": debt(&mut hypatia_lab, &shelf)
             }),
-        })
+        }))
     }
 
     #[tool(description = "Delete a statement in a hypatia memory shelf")]
@@ -474,32 +529,45 @@ impl CombinedServer {
             tail,
             shelf,
         }): Parameters<StatementTripleRequestParameter>,
-    ) -> Json<ToolResult> {
-        let mut hypatia_lab = hypatia::lab::Lab::new().unwrap();
+    ) -> Result<Json<ToolResult>, ErrorData> {
+        let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
         let shelf = canonicalize_shelf_name(shelf);
-        hypatia_lab.flush_if_overdue(&shelf).unwrap();
+        hypatia_lab.flush_if_overdue(&shelf).map_err(|e| {
+            ErrorData::internal_error(format!("Failed to flush shelf embedding state: {e}"), None)
+        })?;
         let key = hypatia::model::StatementKey::new(&head, &relation, &tail);
-        hypatia_lab.delete_statement(&shelf, &key).unwrap();
-        Json(ToolResult {
+        hypatia_lab.delete_statement(&shelf, &key).map_err(|e| {
+            ErrorData::internal_error(format!("Failed to delete statement: {e}"), None)
+        })?;
+        Ok(Json(ToolResult {
             result: json!({ "head": key.head, "relation": key.relation, "tail": key.tail, "deleted": true }),
-        })
+        }))
     }
 
     #[tool(description = "Query knowledges and statements from a hypatia memory shelf")]
     fn query(
         &self,
         Parameters(QueryRequestParameter { jse, shelf }): Parameters<QueryRequestParameter>,
-    ) -> Json<ToolResult> {
-        let mut hypatia_lab = hypatia::lab::Lab::new().unwrap();
+    ) -> Result<Json<ToolResult>, ErrorData> {
+        let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
         let shelf = canonicalize_shelf_name(shelf);
-        hypatia_lab.flush_if_overdue(&shelf).unwrap();
+        hypatia_lab.flush_if_overdue(&shelf).map_err(|e| {
+            ErrorData::internal_error(format!("Failed to flush shelf embedding state: {e}"), None)
+        })?;
         let jse = jse_arg(jse, "JSE").unwrap_or_default();
         let semantic = hypatia::lab::uses_similar(&jse);
-        let mut out = rows(hypatia_lab.query(&shelf, &jse).unwrap());
+        let mut out =
+            rows(hypatia_lab.query(&shelf, &jse).map_err(|e| {
+                ErrorData::internal_error(format!("Failed to query shelf: {e}"), None)
+            })?);
         if semantic {
             out["embedding"] = debt(&mut hypatia_lab, &shelf);
         }
-        Json(ToolResult { result: out })
+        Ok(Json(ToolResult { result: out }))
     }
 
     #[tool(description = "Search for knowledges and statements in a hypatia memory shelf")]
@@ -512,19 +580,27 @@ impl CombinedServer {
             limit,
             offset,
         }): Parameters<SearchRequestParameter>,
-    ) -> Json<ToolResult> {
-        let mut hypatia_lab = hypatia::lab::Lab::new().unwrap();
+    ) -> Result<Json<ToolResult>, ErrorData> {
+        let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
         let shelf = canonicalize_shelf_name(shelf);
-        hypatia_lab.flush_if_overdue(&shelf).unwrap();
-        let (limit, offset) = paging(limit, offset).unwrap();
+        hypatia_lab.flush_if_overdue(&shelf).map_err(|e| {
+            ErrorData::internal_error(format!("Failed to flush shelf embedding state: {e}"), None)
+        })?;
+        let (limit, offset) = paging(limit, offset).map_err(|e| {
+            ErrorData::internal_error(format!("Failed to get pagination setting: {e}"), None)
+        })?;
         let opts = hypatia::model::SearchOpts {
             catalog,
             limit,
             offset,
         };
-        Json(ToolResult {
-            result: rows(hypatia_lab.search(&shelf, &query, opts).unwrap()),
-        })
+        Ok(Json(ToolResult {
+            result: rows(hypatia_lab.search(&shelf, &query, opts).map_err(|e| {
+                ErrorData::internal_error(format!("Failed to search shelf: {e}"), None)
+            })?),
+        }))
     }
 
     #[tool(description = "Find similar knowledges and statements in a hypatia memory shelf")]
@@ -539,12 +615,23 @@ impl CombinedServer {
             tags,
             exclude_tags,
         }): Parameters<SimilarityRequestParameter>,
-    ) -> Json<ToolResult> {
-        let (limit, _) = paging(limit, None).unwrap();
+    ) -> Result<Json<ToolResult>, ErrorData> {
+        let (limit, _) = paging(limit, None).map_err(|e| {
+            ErrorData::internal_error(format!("Failed to get pagination setting: {e}"), None)
+        })?;
         let shelf = canonicalize_shelf_name(shelf);
-        let mut hypatia_lab = hypatia::lab::Lab::new().unwrap();
-        let condition = condition.map(|c| jse_arg(c, "where")).transpose().unwrap();
-        hypatia_lab.flush_if_overdue(&shelf).unwrap();
+        let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
+        let condition = condition
+            .map(|c| jse_arg(c, "where"))
+            .transpose()
+            .map_err(|e| {
+                ErrorData::internal_error(format!("Failed to parse condition: {e}"), None)
+            })?;
+        hypatia_lab.flush_if_overdue(&shelf).map_err(|e| {
+            ErrorData::internal_error(format!("Failed to flush shelf embedding state: {e}"), None)
+        })?;
         let target = target.unwrap_or_else(|| "both".to_string());
         let filter = hypatia::engine::filter::similar_filter(
             &clean_list(tags.unwrap_or_default()),
@@ -553,28 +640,33 @@ impl CombinedServer {
         );
         let result = hypatia_lab
             .similar_where(&shelf, &query, &target, limit, filter.as_ref())
-            .unwrap();
+            .map_err(|e| {
+                ErrorData::internal_error(format!("Failed to find similar items: {e}"), None)
+            })?;
         let mut out = rows(result);
         out["embedding"] = debt(&mut hypatia_lab, &shelf);
-        Json(ToolResult { result: out })
+        Ok(Json(ToolResult { result: out }))
     }
 
     #[tool(description = "Backfill knowledges and statements in a hypatia memory shelf")]
     fn backfill_shelf(
         &self,
         Parameters(BackfillRequestParameter { limit, shelf }): Parameters<BackfillRequestParameter>,
-    ) -> Json<ToolResult> {
-        let mut hypatia_lab = hypatia::lab::Lab::new().unwrap();
+    ) -> Result<Json<ToolResult>, ErrorData> {
+        let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
         let shelf = canonicalize_shelf_name(shelf);
         let limit = limit.unwrap_or(BACKFILL_DEFAULT_LIMIT);
         if !(1..=BACKFILL_MAX_LIMIT).contains(&limit) {
-            return Json(ToolResult {
-                result: json!({
-                    "error": format!("limit must be between 1 and {BACKFILL_MAX_LIMIT}, got {limit}")
-                }),
-            });
+            return Err(ErrorData::internal_error(
+                format!("limit must be between 1 and {BACKFILL_MAX_LIMIT}, got {limit}"),
+                None,
+            ));
         }
-        let stats = hypatia_lab.backfill_batch(&shelf, limit).unwrap();
+        let stats = hypatia_lab.backfill_batch(&shelf, limit).map_err(|e| {
+            ErrorData::internal_error(format!("Failed to backfill shelf: {e}"), None)
+        })?;
         let result = json!({
             "installed": stats.installed,
             "skipped": stats.skipped,
@@ -582,7 +674,7 @@ impl CombinedServer {
             "error": stats.error,
             "embedding": debt(&mut hypatia_lab, &shelf)
         });
-        Json(ToolResult { result: result })
+        Ok(Json(ToolResult { result: result }))
     }
 
     #[tool(description = "List available tags and their occurrences for a shelf")]
@@ -590,23 +682,18 @@ impl CombinedServer {
         &self,
         Parameters(ShelfNameParams { shelf_name }): Parameters<ShelfNameParams>,
     ) -> Result<Json<ToolResult>, ErrorData> {
-        let hypatia_lab = hypatia::lab::Lab::new().unwrap();
+        let hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
         let shelf_name = canonicalize_shelf_name(shelf_name);
-        let tag_tuples = hypatia_lab.field_values(&shelf_name, "tags")
-            .map_err(|e| ErrorData::internal_error(e.to_string(), None));
-        if let Ok(tags) = tag_tuples {
-            let tags: HashMap<String, i64> = tags.into_iter().collect();
-            return Ok(Json(ToolResult {
-                result: json!({
-                    "shelf_name": shelf_name,
-                    "tags": tags,
-                }),
-            }));
-        }
+        let tag_tuples = hypatia_lab
+            .field_values(&shelf_name, "tags")
+            .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
+        let tags: HashMap<String, i64> = tag_tuples.into_iter().collect();
         return Ok(Json(ToolResult {
             result: json!({
                 "shelf_name": shelf_name,
-                "tags": HashMap::<String, i64>::new(),
+                "tags": tags,
             }),
         }));
     }
@@ -614,18 +701,21 @@ impl CombinedServer {
     #[tool(description = "Check a tag's existence in the available tags for a shelf")]
     fn check_shelf_tag_existence(
         &self,
-        Parameters(GenericNameArgs { name, shelf}): Parameters<GenericNameArgs>,
+        Parameters(GenericNameArgs { name, shelf }): Parameters<GenericNameArgs>,
     ) -> Result<Json<ToolResult>, ErrorData> {
-        let hypatia_lab = hypatia::lab::Lab::new().unwrap();
+        let hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
         let shelf_name = canonicalize_shelf_name(shelf);
-        let tag_existence = hypatia_lab.field_value_exists(&shelf_name, "tags", &name)
-            .map_err(|e| ErrorData::internal_error(e.to_string(), None));
-        if let Ok(exists) = tag_existence {
+        let tag_existence = hypatia_lab
+            .field_value_exists(&shelf_name, "tags", &name)
+            .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
+        if tag_existence {
             return Ok(Json(ToolResult {
                 result: json!({
                     "shelf_name": shelf_name,
                     "tag_value": name,
-                    "exists": exists
+                    "exists": true
                 }),
             }));
         }
@@ -643,23 +733,18 @@ impl CombinedServer {
         &self,
         Parameters(ShelfNameParams { shelf_name }): Parameters<ShelfNameParams>,
     ) -> Result<Json<ToolResult>, ErrorData> {
-        let hypatia_lab = hypatia::lab::Lab::new().unwrap();
+        let hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
         let shelf_name = canonicalize_shelf_name(shelf_name);
-        let scope_tuples = hypatia_lab.field_values(&shelf_name, "scopes")
-            .map_err(|e| ErrorData::internal_error(e.to_string(), None));
-        if let Ok(scopes) = scope_tuples {
-            let scopes: HashMap<String, i64> = scopes.into_iter().collect();
-            return Ok(Json(ToolResult {
-                result: json!({
-                    "shelf_name": shelf_name,
-                    "scopes": scopes,
-                }),
-            }));
-        }
+        let scope_tuples = hypatia_lab
+            .field_values(&shelf_name, "scopes")
+            .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
+        let scopes: HashMap<String, i64> = scope_tuples.into_iter().collect();
         return Ok(Json(ToolResult {
             result: json!({
                 "shelf_name": shelf_name,
-                "scopes": HashMap::<String, i64>::new(),
+                "scopes": scopes,
             }),
         }));
     }
@@ -667,18 +752,21 @@ impl CombinedServer {
     #[tool(description = "Check a scope's existence in the available scopes for a shelf")]
     fn check_shelf_scope_existence(
         &self,
-        Parameters(GenericNameArgs { name, shelf}): Parameters<GenericNameArgs>,
+        Parameters(GenericNameArgs { name, shelf }): Parameters<GenericNameArgs>,
     ) -> Result<Json<ToolResult>, ErrorData> {
-        let hypatia_lab = hypatia::lab::Lab::new().unwrap();
+        let hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
+            ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
+        })?;
         let shelf_name = canonicalize_shelf_name(shelf);
-        let tag_existence = hypatia_lab.field_value_exists(&shelf_name, "scopes", &name)
-            .map_err(|e| ErrorData::internal_error(e.to_string(), None));
-        if let Ok(exists) = tag_existence {
+        let scope_existence = hypatia_lab
+            .field_value_exists(&shelf_name, "scopes", &name)
+            .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
+        if scope_existence {
             return Ok(Json(ToolResult {
                 result: json!({
                     "shelf_name": shelf_name,
                     "scope_value": name,
-                    "exists": exists
+                    "exists": true
                 }),
             }));
         }
