@@ -1,6 +1,10 @@
 ---
 name: hypatia
 description: "Interact with the Hypatia AI memory system using natural language. Translate user requests into calls to the hypatia_memory MCP tools for knowledge CRUD, statement (RDF triple) management, JSE queries, full-text search, vector similarity search, tag and scope vocabulary, and shelf management. Use when the user mentions memories, knowledge bases, knowledge graphs, triples, statements, relationships, or shelves, or asks to store, recall, remember, record, save, find, or search information in Hypatia. Also use when the user wants to create or explore relationships between concepts, query existing knowledge, or manage shelves. Examples: 'remember that Rust is a systems language', 'find everything about Alice', 'record that Alice knows Bob', 'search for programming', 'show all knowledge', 'list shelves', 'what tags exist?'."
+user-invocable: true
+allowed-tools: Bash, Read, Grep, Glob
+argument-hint: <natural-language instruction>
+disable-model-invocation: false
 ---
 
 # Hypatia Query Skill
@@ -482,7 +486,7 @@ Pass `jse` as a JSON value. No shell quoting or escaping is involved.
 
 ### Query Structure
 
-The top-level operator is always `$knowledge` or `$statement` (or `$not-summaried`, below):
+The top-level operator is always `$knowledge` or `$statement` (or `$not-summarised`, below):
 
 ```json
 ["$knowledge", "<condition1>", "<condition2>"]
@@ -519,7 +523,7 @@ Results are ordered by `created_at` descending.
 | `$k-hop` | K-hop graph traversal (statement only) | `["$k-hop", "head", "relation", depth]` |
 | `$has` | Exact membership in a JSON field (arrays: element; scalars: equality; array value = any-of) — indexed | `["$has", "tags", "rust"]` |
 | `$json-contains` | Structural containment (PG `@>`) — indexed recall + exact recheck | `["$json-contains", {"tags": ["rust"]}]` |
-| `$not-summaried` | Top-level: knowledge carrying a tag that no `summary` statement points at, oldest first | `["$not-summaried", "message", condition...]` |
+| `$not-summarised` | Top-level: knowledge carrying a tag that no `summary` statement points at, oldest first | `["$not-summarised", "message", condition...]` |
 
 ### Critical Syntax Rules
 
@@ -538,7 +542,7 @@ Results are ordered by `created_at` descending.
    `$contains` on array fields (`tags`/`scopes`/`figures`) routes to exact membership too; on
    other fields it stays substring. `$json-contains` matches whole-document containment, e.g.
    `["$json-contains", {"tags": ["rust"]}]`.
-7. **`$not-summaried`** is spelled exactly that way.
+7. **`$not-summarised`** is spelled exactly that way.
 
 ### `$triple` Operator
 

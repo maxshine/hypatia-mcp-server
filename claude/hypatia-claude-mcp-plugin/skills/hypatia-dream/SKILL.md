@@ -1,12 +1,16 @@
 ---
 name: hypatia-dream
 description: "Run an incremental Hypatia graph-consolidation pass at a work-period boundary, like sleep-time knowledge organization, using the hypatia_memory MCP tools. Use only for an explicit batch closeout or dream-time review, not for ordinary knowledge CRUD, a one-off triple, or a lookup. Without an explicit mode, closeout phrases such as 'done for the day', 'wrapping up', 'call it a night', 'end of this phase', 'sweet dreams', or 'tidy up before bed' mean apply; preview phrases such as 'dream on it first', 'review before bed', 'show me how the knowledge relates', 'report only', 'just show me first', or 'do not change anything yet' mean report. Accepts an optional shelf name and `--mode report|apply`. Statement triples are the primary evidence; Knowledge bodies only disambiguate."
+user-invocable: true
+allowed-tools: Bash, Read, Grep, Glob
+argument-hint: "[shelf] [--mode report|apply]"
+disable-model-invocation: false
 ---
 
 # Hypatia Dream
 
 Perform an incremental, relationship-focused consolidation pass over one Hypatia shelf. The
-purpose is to make the graph more coherent after new knowledge arrives, not to summarize,
+purpose is to make the graph more coherent after new knowledge arrives, not to summarise,
 rewrite, delete, or otherwise curate the knowledge nodes themselves.
 
 Treat the graph as a personal knowledge base: inspect its whole available relationship topology

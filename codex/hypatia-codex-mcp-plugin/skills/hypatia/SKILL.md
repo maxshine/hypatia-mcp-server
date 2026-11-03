@@ -480,7 +480,7 @@ Pass `jse` as a JSON value. No shell quoting or escaping is involved.
 
 ### Query Structure
 
-The top-level operator is always `$knowledge` or `$statement` (or `$not-summaried`, below):
+The top-level operator is always `$knowledge` or `$statement` (or `$not-summarised`, below):
 
 ```json
 ["$knowledge", "<condition1>", "<condition2>"]
@@ -517,7 +517,7 @@ Results are ordered by `created_at` descending.
 | `$k-hop` | K-hop graph traversal (statement only) | `["$k-hop", "head", "relation", depth]` |
 | `$has` | Exact membership in a JSON field (arrays: element; scalars: equality; array value = any-of) — indexed | `["$has", "tags", "rust"]` |
 | `$json-contains` | Structural containment (PG `@>`) — indexed recall + exact recheck | `["$json-contains", {"tags": ["rust"]}]` |
-| `$not-summaried` | Top-level: knowledge carrying a tag that no `summary` statement points at, oldest first | `["$not-summaried", "message", condition...]` |
+| `$not-summarised` | Top-level: knowledge carrying a tag that no `summary` statement points at, oldest first | `["$not-summarised", "message", condition...]` |
 
 ### Critical Syntax Rules
 
@@ -536,7 +536,7 @@ Results are ordered by `created_at` descending.
    `$contains` on array fields (`tags`/`scopes`/`figures`) routes to exact membership too; on
    other fields it stays substring. `$json-contains` matches whole-document containment, e.g.
    `["$json-contains", {"tags": ["rust"]}]`.
-7. **`$not-summaried`** is spelled exactly that way.
+7. **`$not-summarised`** is spelled exactly that way.
 
 ### `$triple` Operator
 

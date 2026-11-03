@@ -10,7 +10,7 @@ already do the deterministic work — logging every message and injecting contex
 skill covers the AI-heavy work they leave to you:
 
 1. **Follow injected rules and taboos** for the current project.
-2. **Summarize the conversation log** through a hierarchical summary cascade.
+2. **Summarise the conversation log** through a hierarchical summary cascade.
 3. **Extract semantic memories** (rules, taboos, work units) from completed work.
 4. **Execute explicit memory operations** (remember, recall, forget).
 
@@ -42,7 +42,7 @@ steps below are yours.
 | `TRIGGER:log` | Every user message | Nothing — the message is already stored. Do **not** write it again |
 | `TRIGGER:immediate` | The prompt contains "remember", "recall" or "forget" | [Explicit Memory Operations](#explicit-memory-operations-triggerimmediate) |
 | `TRIGGER:extract` | Every turn once the session has reached 5 turns | [Semantic Extraction Protocol](#semantic-extraction-protocol) |
-| `TRIGGER:summary` | ≥ 16 `message` entries in the project scope are not yet summarized | [Hierarchical Summary Cascade](#hierarchical-summary-cascade) |
+| `TRIGGER:summary` | ≥ 16 `message` entries in the project scope are not yet summarised | [Hierarchical Summary Cascade](#hierarchical-summary-cascade) |
 
 If no signal is present, no memory action is needed. Memory work is background work: answer
 the user's actual request first or alongside it, and never let it block or derail the
@@ -98,8 +98,8 @@ with `check_shelf_tag_existence {"name": "<tag>"}`; if it is not in use, look at
 
 Every turn is stored by the hooks as one knowledge entry:
 
-- **Name**: `msg_<SESSION_ID>_<TURN_ID>_<ROLE>`, where `<ROLE>` is `u` for the user prompt
-  (`UserPromptSubmit`) and `a` for the assistant's final reply (`Stop`), so each turn has up to
+- **Name**: `msg_<SESSION_ID>_<TURN_ID><ROLE>`, where `<ROLE>` is `_u` for the user prompt
+  (`UserPromptSubmit`) and `_a` for the assistant's final reply (`Stop`) so each turn has up to
   two entries
 - **Tags**: `["message"]`
 - **Scopes**: `["<PROJECT>"]`
@@ -145,19 +145,19 @@ Run on `TRIGGER:summary`, and again whenever a level fills up.
 
 **Predicate:** every summary link uses the relation `summary`: `<summary-name> summary <item-name>`.
 
-| Level | Tags | Summarizes |
+| Level | Tags | Summarises |
 |---|---|---|
 | 1 | `["summary", "summary 1"]` | `message` entries |
 | 2 | `["summary", "summary 2"]` | `summary 1` entries |
 | N | `["summary", "summary N"]` | `summary N-1` entries |
 
-### Step 1: Find unsummarized items at level L
+### Step 1: Find unsummarised items at level L
 
-`$not-summaried` returns knowledge entries carrying the tag that no `summary` statement points
+`$not-summarised` returns knowledge entries carrying the tag that no `summary` statement points
 at, **oldest first**:
 
 ```json
-query {"jse": ["$not-summaried", "<TAG>", ["$has", "scopes", "<PROJECT>"]]}
+query {"jse": ["$not-summarised", "<TAG>", ["$has", "scopes", "<PROJECT>"]]}
 ```
 
 | Level | `<TAG>` |
@@ -167,7 +167,7 @@ query {"jse": ["$not-summaried", "<TAG>", ["$has", "scopes", "<PROJECT>"]]}
 | N | `summary N-1` |
 
 If at least 16 rows come back, take the **first 16** (the oldest) as the batch. Otherwise stop:
-never summarize a partial batch.
+never summarise a partial batch.
 
 ### Step 2: Synthesize and store the summary
 
@@ -240,8 +240,8 @@ yourself. Analyze the prompt — do not reuse it verbatim as a query:
      `similar {"query": "<conceptual query>", "target": "knowledge", "exclude_tags": ["message", "summary", "session"], "limit": 5}`
    - Keywords: `search {"query": "<derived keywords>", "catalog": "knowledge", "limit": 5}`
    - Graph: `query {"jse": ["$statement", ["$triple", "<entity>", "$*", "$*"]]}`
-   - Recent unsummarized conversation in this project:
-     `query {"jse": ["$not-summaried", "message", ["$has", "scopes", "<PROJECT>"]]}`
+   - Recent unsummarised conversation in this project:
+     `query {"jse": ["$not-summarised", "message", ["$has", "scopes", "<PROJECT>"]]}`
 3. Use at most 5 relevant entries, and mention which ones you relied on when it matters to the user.
 
 ---
@@ -362,7 +362,7 @@ If the work unit establishes a lasting convention or prohibition, also store it 
 The hook emits `TRIGGER:immediate` on a plain substring match, so first confirm the user is
 actually asking you to remember, recall, or forget something. If not, ignore the signal.
 
-### Remember
+### Remember / Store
 
 1. Identify exactly what to remember.
 2. Classify it as `rule` (something to follow), `taboo` (something to avoid), or general `memory`.

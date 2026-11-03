@@ -22,7 +22,7 @@
         "capabilities": ["Interactive", "Read", "Write"],
         "websiteURL": "https://github.com/maxshine/hypatia-mcp-server",
         "defaultPrompt": [
-          "Remember this project's conventions",
+          "Remember this project's facts and knowledges",
           "Recall what we decided about this topic"
         ]
       }

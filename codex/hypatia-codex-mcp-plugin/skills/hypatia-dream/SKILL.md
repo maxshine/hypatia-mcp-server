@@ -6,7 +6,7 @@ description: "Run an incremental Hypatia graph-consolidation pass at a work-peri
 # Hypatia Dream
 
 Perform an incremental, relationship-focused consolidation pass over one Hypatia shelf. The
-purpose is to make the graph more coherent after new knowledge arrives, not to summarize,
+purpose is to make the graph more coherent after new knowledge arrives, not to summarise,
 rewrite, delete, or otherwise curate the knowledge nodes themselves.
 
 Treat the graph as a personal knowledge base: inspect its whole available relationship topology
