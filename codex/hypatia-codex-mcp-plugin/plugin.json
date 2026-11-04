@@ -13,6 +13,7 @@
   "keywords": ["memory", "hypatia", "mcp", "hooks", "codex"],
   "extensions": {
     "com.openai": {
+      "hooks": "./hooks/hooks.json",
       "interface": {
         "displayName": "Hypatia Memory",
         "shortDescription": "Durable agent memory via a local hypatia-mcp-server",

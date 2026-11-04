@@ -23,10 +23,13 @@ When releasing, bump all three together.
 
 ## Credit
 
-All core memory functionality — knowledge storage, embeddings, shelves, archives —
+All core memory functionality — memory storage, embeddings, shelves, archives and et al —
 is implemented by [MarchLiu/hypatia](https://github.com/MarchLiu/hypatia). This
 repository only adds an MCP transport layer (via [`rmcp`](https://crates.io/crates/rmcp))
 on top of that library.
+In addition, the available plugins for integration with popular agent hosts are just 
+translations of [MarchLiu/hypatia](https://github.com/MarchLiu/hypatia) examples, with
+adoption of tools provided by this repository MCP implementation.
 
 ## Install & run
 
