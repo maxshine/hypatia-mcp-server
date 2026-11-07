@@ -30,19 +30,21 @@ pub fn hypatia_hook_hook_log() -> std::path::PathBuf {
 pub enum MessageRole {
     User,
     Assistant,
+    None
 }
 
 impl MessageRole {
     fn suffix(self) -> &'static str {
         match self {
-            MessageRole::User => "u",
-            MessageRole::Assistant => "a",
+            MessageRole::User => "_u",
+            MessageRole::Assistant => "_a",
+            MessageRole::None => "",
         }
     }
 }
 
 pub fn format_message_name(session_id: &str, turn_id: &str, role: MessageRole) -> String {
-    format!("msg_{}_{}_{}", session_id, turn_id, role.suffix())
+    format!("msg_{}_{}{}", session_id, turn_id, role.suffix())
 }
 
 #[expect(dead_code)]
@@ -550,8 +552,10 @@ mod tests {
     fn message_names_differ_by_role() {
         let user = format_message_name("s1", "t1", MessageRole::User);
         let assistant = format_message_name("s1", "t1", MessageRole::Assistant);
+        let none = format_message_name("s1", "t1", MessageRole::None);
         assert_eq!(user, "msg_s1_t1_u");
         assert_eq!(assistant, "msg_s1_t1_a");
+        assert_eq!(none, "msg_s1_t1");
         assert_ne!(user, assistant);
     }
 }

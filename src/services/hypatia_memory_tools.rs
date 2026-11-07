@@ -143,7 +143,10 @@ pub fn dirs_home() -> std::path::PathBuf {
 }
 
 fn canonicalize_shelf_name(shelf: Option<String>) -> String {
-    shelf.unwrap_or_else(|| DEFAULT_SHELF.to_string())
+    match shelf {
+        Some(s) if !s.is_empty() => s,
+        _ => DEFAULT_SHELF.to_string(),
+    }
 }
 
 fn clean_list(items: Vec<String>) -> Vec<String> {
@@ -357,14 +360,20 @@ impl CombinedServer {
         hypatia_lab.flush_if_overdue(&shelf).map_err(|e| {
             ErrorData::internal_error(format!("Failed to flush shelf embedding state: {e}"), None)
         })?;
-        if hypatia_lab.get_knowledge(&shelf, &name).is_ok() {
-            return Err(ErrorData::invalid_request(
-                format!(
-                    "knowledge '{}' already exists; use knowledge_update to change it",
-                    name
-                ),
-                None,
-            ));
+        match hypatia_lab.get_knowledge(&shelf, &name) {
+            Ok(Some(_)) => {
+                return Err(ErrorData::invalid_request(
+                    format!(
+                        "knowledge '{}' already exists; use knowledge_update to change it",
+                        name
+                    ),
+                    None,
+                ));
+            }
+            Ok(None) => {}
+            Err(e) => {
+                return Err(ErrorData::internal_error(format!("Failed to check knowledge: {e}"), None));
+            }
         }
         let content = hypatia::model::Content::new(data.unwrap_or_default())
             .with_tags(clean_list(tags.unwrap_or_default()))
