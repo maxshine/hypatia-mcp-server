@@ -30,6 +30,111 @@ with `hypatia` CLI commands replaced by the `hypatia_memory` MCP tools.
 Hooks are on by default in Codex. Plugins that bundle lifecycle hooks are not eligible
 for the public plugin directory, so distribution is through this repository's marketplace.
 
+## Customise the MCP server settings
+
+The plugin does not start or configure `hypatia-mcp-server`; you run it yourself. The bundled
+[mcp.json](mcp.json) assumes the server's defaults:
+
+```json
+"hypatia_memory": { "type": "streamable-http", "url": "http://localhost:8000/mcp" }
+```
+
+If your server listens somewhere else, Codex connects to the wrong place and the
+`hypatia_memory` tools and hooks fail. This happens when you:
+
+- start the server with `--port` or `--address` (for example `serve --port 1234`);
+- run it on another machine, in a container or VM, or on the Windows side of WSL;
+- already have another service on port 8000.
+
+Pick one of the two fixes.
+
+### Option 1: run the server where the plugin expects it
+
+No plugin change is needed. Free port 8000 and start the server with its defaults:
+
+```bash
+hypatia-mcp-server serve
+```
+
+### Option 2: point the plugin at your server
+
+1. Start the server with the address you want and note the URL clients must use. The URL is
+   `http://<host>:<port>/mcp`, where `<host>` is a name or IP that your machine can reach.
+   `--address` only sets what the server binds to, so `0.0.0.0` is not a usable client host.
+
+   ```bash
+   hypatia-mcp-server serve --port 1234
+   # client URL: http://localhost:1234/mcp
+   ```
+
+2. Edit `url` in the plugin's `mcp.json`, and change nothing else in the entry:
+
+   ```json
+   {
+     "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+     "mcpServers": {
+       "hypatia_memory": {
+         "type": "streamable-http",
+         "url": "http://localhost:1234/mcp"
+       }
+     }
+   }
+   ```
+
+   Edit the copy of the plugin that Codex installed. Editing a checkout of this repository only
+   helps if you install the plugin from that checkout (for example by adding your clone as the
+   plugin marketplace). A plugin update replaces an installed copy, so repeat the edit after
+   updating.
+
+3. Restart Codex, then check that the server connects (for example with `codex mcp list` or the
+   `/mcp` command) and that the `hypatia_memory` tools are listed.
+
+### Also: tune the plugin's server in `config.toml` (not the URL)
+
+Codex lets you adjust a plugin-provided MCP server from your own `~/.codex/config.toml` (or a
+project-scoped `.codex/config.toml`), under `plugins.<plugin>.mcp_servers.<server>`. This
+**cannot change the server's `url` or transport**: those always come from the plugin's
+`mcp.json`, so it does not fix a wrong address. Use it to switch the server off or to set tool
+policy, for example:
+
+```toml
+[plugins."hypatia-codex-mcp-plugin@hypatia-mcp-server".mcp_servers.hypatia_memory]
+enabled = true
+default_tools_approval_mode = "prompt"        # auto, prompt, writes or approve
+disabled_tools = ["delete_knowledge"]         # tool deny list, applied after enabled_tools
+
+[plugins."hypatia-codex-mcp-plugin@hypatia-mcp-server".mcp_servers.hypatia_memory.tools.search]
+approval_mode = "approve"
+```
+
+- The plugin ID is `<plugin name>@<marketplace name>`: `hypatia-codex-mcp-plugin@hypatia-mcp-server`
+  when installed from this repository's marketplace. Use the ID Codex shows for your install.
+- The server key is `hypatia_memory`, the name in [mcp.json](mcp.json).
+- Codex's general MCP server options include `enabled_tools`, `required` and
+  `tools.<tool>.output_token_limit`. The docs only show `enabled`, the approval modes and the
+  tool allow and deny lists for plugin servers, so test others before relying on them.
+- Be careful with `enabled_tools` and `disabled_tools`. The hooks call `agent_session_start`,
+  `user_prompt_submission` and `agent_stop`, and the skills use most of the other tools
+  (`hypatia-dream` needs `delete_statement`). Hiding a tool can break them.
+- This feature is documented at
+  [codex-docs.com](https://www.codex-docs.com/en/docs/extend/mcp#plugin-provided-mcp-servers).
+  Check it against your Codex version.
+
+Notes:
+
+- **Keep the server name `hypatia_memory`.** The hooks in [hooks/hooks.json](hooks/hooks.json)
+  and the skills refer to the server by that name. If you rename it, the hooks stop working.
+  Adding a second, differently named server in your own `config.toml` does not redirect the
+  plugin's hooks.
+- **Slow or remote servers.** Each hook has `"timeout": 10` (seconds) in
+  [hooks/hooks.json](hooks/hooks.json). Raise it if the server is far away or slow to answer.
+- **The server has no authentication.** Do not bind it to `0.0.0.0` or expose it beyond a
+  network you trust. Prefer `localhost`, or an SSH tunnel to a remote machine.
+- **Shelves live on the server's machine** (`~/.hypatia/<shelf>`), not on the machine running
+  Codex. Initialise them where the server runs, with `hypatia-mcp-server init-shelf`.
+- **If you hit connection errors**, confirm the URL answers (`curl -i http://localhost:8000/mcp`
+  returns an HTTP response, not "connection refused") and that the server is running.
+
 ## TODO
 
 ### MCP tools missing compared with the `hypatia` CLI

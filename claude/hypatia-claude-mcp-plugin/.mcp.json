@@ -2,7 +2,7 @@
   "mcpServers": {
     "hypatia_memory": {
       "type": "http",
-      "url": "http://localhost:8000/mcp"
+      "url": "${user_config.server_url}"
     }
   }
 }

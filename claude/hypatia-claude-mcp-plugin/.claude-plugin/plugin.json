@@ -10,5 +10,13 @@
   "homepage": "https://github.com/maxshine/hypatia-mcp-server",
   "repository": "https://github.com/maxshine/hypatia-mcp-server",
   "license": "MIT",
-  "keywords": ["memory", "hypatia", "mcp", "hooks", "knowledge-graph"]
+  "keywords": ["memory", "hypatia", "mcp", "hooks", "knowledge-graph"],
+  "userConfig": {
+    "server_url": {
+      "type": "string",
+      "title": "Hypatia MCP server URL",
+      "description": "Streamable HTTP endpoint of your hypatia-mcp-server, for example http://localhost:8000/mcp",
+      "default": "http://localhost:8000/mcp"
+    }
+  }
 }
