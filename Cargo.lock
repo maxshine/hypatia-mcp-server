@@ -1186,7 +1186,7 @@ dependencies = [
 [[package]]
 name = "hypatia"
 version = "4.2.2"
-source = "git+https://github.com/MarchLiu/hypatia?tag=v4.1.1#fc03119918f3a1f8cfda295acce1378a8ecc27ac"
+source = "git+https://github.com/MarchLiu/hypatia?tag=v4.2.2#fc03119918f3a1f8cfda295acce1378a8ecc27ac"
 dependencies = [
  "chrono",
  "clap",

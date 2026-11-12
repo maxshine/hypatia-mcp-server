@@ -1,9 +1,10 @@
+use crate::services::DEFAULT_SHELF;
 use crate::services::hypatia_memory_tools::dirs_home;
 use hypatia;
 use std::path::{Path, PathBuf};
 
 pub(crate) fn run_init_shelf(name: Option<&str>) -> hypatia::Result<()> {
-    let shelf_name = name.unwrap_or("default");
+    let shelf_name = name.unwrap_or(DEFAULT_SHELF);
     let mut lab = hypatia::lab::Lab::new()?;
     let shelf_path = dirs_home().join(".hypatia").join(&shelf_name);
     let shelf = target_shelf(&mut lab, Some(&shelf_path), Some(&shelf_name))?;
@@ -34,7 +35,7 @@ fn target_shelf(
         .collect();
     let shelf = match path {
         None => {
-            let name = name.unwrap_or("default");
+            let name = name.unwrap_or(DEFAULT_SHELF);
             if !registered.iter().any(|(known, _, _)| known == name) {
                 return Err(hypatia::HypatiaError::Shelf(format!(
                     "shelf '{name}' is not connected; run `hypatia init <dir> -n {name}` to set it up"

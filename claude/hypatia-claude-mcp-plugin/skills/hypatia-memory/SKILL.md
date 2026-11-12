@@ -20,8 +20,9 @@ skill covers the AI-heavy work they leave to you:
 All reads and writes go through the `hypatia_memory` MCP tools (`create_knowledge`,
 `get_knowledge`, `update_knowledge`, `delete_knowledge`, `create_statement`,
 `delete_statement`, `query`, `search`, `similar`). See the `hypatia` skill for full tool and
-JSE syntax. The hooks always use the `default` shelf, so omit the `shelf` argument everywhere
-in this skill.
+JSE syntax. The hooks always use the server's default shelf (named in the Hypatia server
+instructions; `default` unless the server was started with `--default-shelf`), so omit the
+`shelf` argument everywhere in this skill.
 
 ## What the Hooks Do
 

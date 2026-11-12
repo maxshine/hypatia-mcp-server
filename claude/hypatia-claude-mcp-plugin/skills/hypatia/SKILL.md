@@ -53,8 +53,9 @@ in a loop.
 General conventions:
 
 - `shelf` (and `shelf_name` on the shelf-level tools) is optional and defaults to
-  `"default"`. The plugin's hooks always read and write the `default` shelf, so omit it unless
-  the user names another one.
+  the server's default shelf (named in the server instructions; `"default"` unless the server
+  was started with `--default-shelf`). The plugin's hooks always read and write that shelf, so
+  omit it unless the user names another one.
 - `tags`, `scopes`, `figures` and knowledge `synonyms` are **JSON arrays of strings**, not
   comma-separated strings.
 - Results come back as JSON. `query`, `search` and `similar` return

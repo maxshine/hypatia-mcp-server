@@ -26,7 +26,8 @@ explicitly requested dream-time review. Do not use it for ordinary knowledge CRU
 one-off triple request, an entity lookup, a relationship query, or automatic
 conversation-memory extraction; those belong to `hypatia` or `hypatia-memory`.
 
-Take the optional shelf name from the request; use `default` when it is omitted.
+Take the optional shelf name from the request; use the server's default shelf (named in the
+Hypatia server instructions, `default` unless configured otherwise) when it is omitted.
 
 Resolve the mode in this order:
 
@@ -79,7 +80,7 @@ words or a topic. Omit uncertain candidates.
 
 1. Confirm the `hypatia_memory` MCP tools are available. If they are missing or fail to
    connect, stop and report the blocker (the server is started with `hypatia-mcp-server serve`).
-2. Set `SHELF` to the requested shelf or `default`, then confirm it is connected before doing
+2. Set `SHELF` to the requested shelf or the server's default shelf, then confirm it is connected before doing
    anything else:
 
    ```json

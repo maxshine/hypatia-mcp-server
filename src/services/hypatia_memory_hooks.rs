@@ -92,7 +92,6 @@ const HOOK_EVENT_FIELD_CWD: &str = "cwd";
 const HOOK_EVENT_FIELD_TRANSCRIPT_PATH: &str = "transcript_path";
 const HOOK_EVENT_FIELD_PROMPT: &str = "prompt";
 const HOOK_EVENT_FIELD_HOOK_EVENT_NAME: &str = "hook_event_name";
-const DEFAULT_SHELF: &str = "default";
 const UNSUMMARIZED_THRESHOLD: i64 = 16;
 const SEARCH_RECALL_LIMIT: i64 = 5;
 const TURN_COMPACT_THRESHOLD: i64 = 5;
@@ -107,8 +106,6 @@ impl CombinedServer {
     ) -> Result<Json<Value>, ErrorData> {
         let required_keys = vec![
             HOOK_EVENT_FIELD_SESSION_ID,
-            HOOK_EVENT_FIELD_TURN_ID,
-            HOOK_EVENT_FIELD_LAST_ASSISTANT_MESSAGE,
             HOOK_EVENT_FIELD_CWD,
             HOOK_EVENT_FIELD_HOOK_EVENT_NAME,
         ];
@@ -150,6 +147,7 @@ impl CombinedServer {
             .append(true)
             .open(hypatia_hook_hook_log())
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
+        let shelf = self.default_shelf();
         let rule_query_str = format!(
             "[\"$knowledge\", [\"$contains\", \"tags\", \"rule\"], [\"$or\", [\"$contains\", \"scopes\", \"{project}\"], [\"$contains\", \"scopes\", \"\"]]]"
         );
@@ -157,7 +155,7 @@ impl CombinedServer {
             ErrorData::internal_error(format!("invalid rule query JSON: {e}"), None)
         })?;
         let rule_query_result = hypatia_lab
-            .query(DEFAULT_SHELF, &rule_query)
+            .query(shelf, &rule_query)
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
         let taboo_query_str = format!(
             "[\"$knowledge\", [\"$contains\", \"tags\", \"taboo\"], [\"$or\", [\"$contains\", \"scopes\", \"{project}\"], [\"$contains\", \"scopes\", \"\"]]]"
@@ -166,7 +164,7 @@ impl CombinedServer {
             ErrorData::internal_error(format!("invalid taboo query JSON: {e}"), None)
         })?;
         let taboo_query_result = hypatia_lab
-            .query(DEFAULT_SHELF, &taboo_query)
+            .query(shelf, &taboo_query)
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
         let rules = rule_query_result
             .rows
@@ -204,13 +202,13 @@ impl CombinedServer {
         };
         let session_id_str = session_id.as_ref().and_then(|v| v.as_str()).unwrap_or("");
         let injection_context = format!(
-            "## Hypatia Memory Context\nproject: {project}\nsession: {session_id_str}\n\nEvery message in this session is automatically stored in the Hypatia knowledge graph (tag: message, scope: {project})\n{injection_rules}\n{injection_taboos}\n"
+            "## Hypatia Memory Context\nproject: {project}\nsession: {session_id_str}\n\nEvery message in this session is automatically stored in the Hypatia knowledge graph (tag: message, scope: {project}, shelf: {shelf})\n{injection_rules}\n{injection_taboos}\n"
         );
         write!(session_hook_log, "{}: {} event: handled session start event with injected context for session {} from shelf {}",
             timestamp,
             event_name.clone().unwrap_or_default(),
             session_id_str,
-            DEFAULT_SHELF)
+            shelf)
         .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
         session_hook_log
             .flush()
@@ -267,6 +265,7 @@ impl CombinedServer {
             &turn_id.as_ref().and_then(|v| v.as_str()).unwrap_or(""),
             MessageRole::Assistant,
         );
+        let shelf = self.default_shelf();
         let mut hypatia_lab =
             hypatia::Lab::new().map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
         let mut session_hook_log = OpenOptions::new()
@@ -274,7 +273,7 @@ impl CombinedServer {
             .append(true)
             .open(hypatia_hook_hook_log())
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
-        let existing_knowledge_result = hypatia_lab.get_knowledge(DEFAULT_SHELF, &message_name);
+        let existing_knowledge_result = hypatia_lab.get_knowledge(shelf, &message_name);
         match existing_knowledge_result {
             Ok(None) => {
                 // Handle the case where existing knowledge is found
@@ -295,7 +294,7 @@ impl CombinedServer {
                     .with_scopes(scopes)
                     .with_embed(false.then_some(false));
                 let _ = hypatia_lab
-                    .create_knowledge(DEFAULT_SHELF, &message_name, knowledge_content)
+                    .create_knowledge(shelf, &message_name, knowledge_content)
                     .map_err(|e| ErrorData::internal_error(e.to_string(), None));
                 writeln!(
                     session_hook_log,
@@ -303,7 +302,7 @@ impl CombinedServer {
                     timestamp,
                     event_name.unwrap_or_default(),
                     message_name,
-                    DEFAULT_SHELF
+                    shelf
                 )
                 .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
             }
@@ -314,7 +313,7 @@ impl CombinedServer {
                     timestamp,
                     event_name.unwrap_or_default(),
                     message_name,
-                    DEFAULT_SHELF
+                    shelf
                 )
                 .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
             }
@@ -337,7 +336,6 @@ impl CombinedServer {
         let required_keys = vec![
             HOOK_EVENT_FIELD_SESSION_ID,
             HOOK_EVENT_FIELD_TURN_ID,
-            HOOK_EVENT_FIELD_LAST_ASSISTANT_MESSAGE,
             HOOK_EVENT_FIELD_CWD,
             HOOK_EVENT_FIELD_HOOK_EVENT_NAME,
             HOOK_EVENT_FIELD_PROMPT,
@@ -381,6 +379,7 @@ impl CombinedServer {
         let prompt_str = prompt
             .and_then(|p| p.as_str().map(|s| s.to_string()))
             .unwrap_or_default();
+        let shelf = self.default_shelf();
         let mut hypatia_lab =
             hypatia::Lab::new().map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
         let mut session_hook_log = OpenOptions::new()
@@ -388,7 +387,7 @@ impl CombinedServer {
             .append(true)
             .open(hypatia_hook_hook_log())
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
-        let existing_knowledge_result = hypatia_lab.get_knowledge(DEFAULT_SHELF, &message_name);
+        let existing_knowledge_result = hypatia_lab.get_knowledge(shelf, &message_name);
         match existing_knowledge_result {
             Ok(Some(_)) => {
                 // Handle the existing knowledge if needed
@@ -398,7 +397,7 @@ impl CombinedServer {
                     timestamp,
                     event_name.clone().unwrap_or_default(),
                     message_name,
-                    DEFAULT_SHELF
+                    shelf
                 )
                 .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
             }
@@ -417,7 +416,7 @@ impl CombinedServer {
                     .with_scopes(scopes)
                     .with_embed(false.then_some(false));
                 let _ = hypatia_lab
-                    .create_knowledge(DEFAULT_SHELF, &message_name, knowledge_content)
+                    .create_knowledge(shelf, &message_name, knowledge_content)
                     .map_err(|e| ErrorData::internal_error(e.to_string(), None));
                 writeln!(
                     session_hook_log,
@@ -425,7 +424,7 @@ impl CombinedServer {
                     timestamp,
                     event_name.clone().unwrap_or_default(),
                     message_name,
-                    DEFAULT_SHELF
+                    shelf
                 )
                 .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
             }
@@ -487,7 +486,7 @@ impl CombinedServer {
             ErrorData::internal_error(format!("invalid rule query JSON: {e}"), None)
         })?;
         let unsummarized_query_result = hypatia_lab
-            .query(DEFAULT_SHELF, &unsummarized_query)
+            .query(shelf, &unsummarized_query)
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
         let mut triggers_str = "[hypatia-memory] TRIGGER:log".to_string();
         if prompt_str.contains("remember")
@@ -511,7 +510,7 @@ impl CombinedServer {
             .collect::<String>();
         let recall_search_result = hypatia_lab
             .search(
-                DEFAULT_SHELF,
+                shelf,
                 &search_q,
                 hypatia::model::SearchOpts {
                     catalog: Some("knowledge".to_string()),

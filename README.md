@@ -64,6 +64,14 @@ Use `--port` and `--address` to change the bind address:
 hypatia-mcp-server serve --port 1234 --address 0.0.0.0
 ```
 
+The memory hooks, and any tool call that omits `shelf`, use the `default` shelf unless you pick
+another with `--default-shelf` (`-s`). The shelf must exist first (`init-shelf --shelf-name
+<name>`); the server states its default shelf in its MCP instructions so agents know about it:
+
+```bash
+hypatia-mcp-server serve --default-shelf work
+```
+
 ## Available tools
 
 These are the MCP tools currently exposed for agent use:  
@@ -91,7 +99,8 @@ These are the MCP tools currently exposed for agent use:
 A second set of tools is designed to be called from agent lifecycle hooks (e.g. Codex
 `SessionStart`, `UserPromptSubmit`, and `Stop` hooks) rather than by the model itself.
 Each takes the hook's JSON event payload as its arguments and returns a hook-style
-response (`{"continue": true, ...}`). They work against the `default` shelf and use the
+response (`{"continue": true, ...}`). They work against the server's default shelf (`default`,
+or the one given with `--default-shelf`) and use the
 last component of the event's `cwd` as the project name (used as the knowledge scope).
 
 | Tool | Hook event | Description |

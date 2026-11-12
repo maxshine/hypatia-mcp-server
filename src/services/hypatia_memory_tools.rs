@@ -130,7 +130,6 @@ struct BackfillRequestParameter {
 struct ToolResult {
     result: Value,
 }
-const DEFAULT_SHELF: &str = "default";
 const DEFAULT_LIMIT: i64 = 100;
 const BACKFILL_DEFAULT_LIMIT: usize = 64;
 const BACKFILL_MAX_LIMIT: usize = 512;
@@ -140,13 +139,6 @@ pub fn dirs_home() -> std::path::PathBuf {
         .or_else(|_| std::env::var("USERPROFILE"))
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|_| std::path::PathBuf::from("."))
-}
-
-fn canonicalize_shelf_name(shelf: Option<String>) -> String {
-    match shelf {
-        Some(s) if !s.is_empty() => s,
-        _ => DEFAULT_SHELF.to_string(),
-    }
 }
 
 fn clean_list(items: Vec<String>) -> Vec<String> {
@@ -247,7 +239,7 @@ impl CombinedServer {
         let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
             ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
         })?;
-        let shelf_name = canonicalize_shelf_name(shelf_name);
+        let shelf_name = self.resolve_shelf(shelf_name);
         let shelf_path = dirs_home().join(".hypatia").join(&shelf_name);
         let result = hypatia_lab
             .connect_shelf(&shelf_path, Some(shelf_name.as_str()))
@@ -276,7 +268,7 @@ impl CombinedServer {
         let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
             ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
         })?;
-        let shelf_name = canonicalize_shelf_name(shelf_name);
+        let shelf_name = self.resolve_shelf(shelf_name);
         hypatia_lab
             .disconnect_shelf(shelf_name.as_str())
             .map_err(|e| {
@@ -293,7 +285,7 @@ impl CombinedServer {
         let hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
             ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
         })?;
-        let shelf_name = canonicalize_shelf_name(shelf_name);
+        let shelf_name = self.resolve_shelf(shelf_name);
         let status = hypatia_lab.shelf_status(&shelf_name).map_err(|e| {
             ErrorData::internal_error(format!("Failed to get shelf status: {e}"), None)
         })?;
@@ -321,7 +313,7 @@ impl CombinedServer {
         &self,
         Parameters(ShelfNameParams { shelf_name }): Parameters<ShelfNameParams>,
     ) -> Result<Json<ToolResult>, ErrorData> {
-        let shelf = canonicalize_shelf_name(shelf_name);
+        let shelf = self.resolve_shelf(shelf_name);
         let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
             ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
         })?;
@@ -356,7 +348,7 @@ impl CombinedServer {
         let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
             ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
         })?;
-        let shelf = canonicalize_shelf_name(Some(shelf.unwrap_or_default()));
+        let shelf = self.resolve_shelf(shelf);
         hypatia_lab.flush_if_overdue(&shelf).map_err(|e| {
             ErrorData::internal_error(format!("Failed to flush shelf embedding state: {e}"), None)
         })?;
@@ -399,7 +391,7 @@ impl CombinedServer {
         let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
             ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
         })?;
-        let shelf = canonicalize_shelf_name(shelf);
+        let shelf = self.resolve_shelf(shelf);
         hypatia_lab.flush_if_overdue(&shelf).map_err(|e| {
             ErrorData::internal_error(format!("Failed to flush shelf embedding state: {e}"), None)
         })?;
@@ -435,7 +427,7 @@ impl CombinedServer {
         let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
             ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
         })?;
-        let shelf = canonicalize_shelf_name(shelf);
+        let shelf = self.resolve_shelf(shelf);
         let patch = hypatia::service::KnowledgePatch {
             data,
             tags: tags.map(clean_list),
@@ -475,7 +467,7 @@ impl CombinedServer {
         let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
             ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
         })?;
-        let shelf = canonicalize_shelf_name(shelf);
+        let shelf = self.resolve_shelf(shelf);
         hypatia_lab.flush_if_overdue(&shelf).map_err(|e| {
             ErrorData::internal_error(format!("Failed to flush shelf embedding state: {e}"), None)
         })?;
@@ -504,7 +496,7 @@ impl CombinedServer {
         let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
             ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
         })?;
-        let shelf = canonicalize_shelf_name(shelf);
+        let shelf = self.resolve_shelf(shelf);
         hypatia_lab.flush_if_overdue(&shelf).map_err(|e| {
             ErrorData::internal_error(format!("Failed to flush shelf embedding state: {e}"), None)
         })?;
@@ -542,7 +534,7 @@ impl CombinedServer {
         let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
             ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
         })?;
-        let shelf = canonicalize_shelf_name(shelf);
+        let shelf = self.resolve_shelf(shelf);
         hypatia_lab.flush_if_overdue(&shelf).map_err(|e| {
             ErrorData::internal_error(format!("Failed to flush shelf embedding state: {e}"), None)
         })?;
@@ -563,7 +555,7 @@ impl CombinedServer {
         let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
             ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
         })?;
-        let shelf = canonicalize_shelf_name(shelf);
+        let shelf = self.resolve_shelf(shelf);
         hypatia_lab.flush_if_overdue(&shelf).map_err(|e| {
             ErrorData::internal_error(format!("Failed to flush shelf embedding state: {e}"), None)
         })?;
@@ -593,7 +585,7 @@ impl CombinedServer {
         let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
             ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
         })?;
-        let shelf = canonicalize_shelf_name(shelf);
+        let shelf = self.resolve_shelf(shelf);
         hypatia_lab.flush_if_overdue(&shelf).map_err(|e| {
             ErrorData::internal_error(format!("Failed to flush shelf embedding state: {e}"), None)
         })?;
@@ -628,7 +620,7 @@ impl CombinedServer {
         let (limit, _) = paging(limit, None).map_err(|e| {
             ErrorData::internal_error(format!("Failed to get pagination setting: {e}"), None)
         })?;
-        let shelf = canonicalize_shelf_name(shelf);
+        let shelf = self.resolve_shelf(shelf);
         let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
             ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
         })?;
@@ -665,7 +657,7 @@ impl CombinedServer {
         let mut hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
             ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
         })?;
-        let shelf = canonicalize_shelf_name(shelf);
+        let shelf = self.resolve_shelf(shelf);
         let limit = limit.unwrap_or(BACKFILL_DEFAULT_LIMIT);
         if !(1..=BACKFILL_MAX_LIMIT).contains(&limit) {
             return Err(ErrorData::internal_error(
@@ -694,7 +686,7 @@ impl CombinedServer {
         let hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
             ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
         })?;
-        let shelf_name = canonicalize_shelf_name(shelf_name);
+        let shelf_name = self.resolve_shelf(shelf_name);
         let tag_tuples = hypatia_lab
             .field_values(&shelf_name, "tags")
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
@@ -715,7 +707,7 @@ impl CombinedServer {
         let hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
             ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
         })?;
-        let shelf_name = canonicalize_shelf_name(shelf);
+        let shelf_name = self.resolve_shelf(shelf);
         let tag_existence = hypatia_lab
             .field_value_exists(&shelf_name, "tags", &name)
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
@@ -745,7 +737,7 @@ impl CombinedServer {
         let hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
             ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
         })?;
-        let shelf_name = canonicalize_shelf_name(shelf_name);
+        let shelf_name = self.resolve_shelf(shelf_name);
         let scope_tuples = hypatia_lab
             .field_values(&shelf_name, "scopes")
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
@@ -766,7 +758,7 @@ impl CombinedServer {
         let hypatia_lab = hypatia::lab::Lab::new().map_err(|e| {
             ErrorData::internal_error(format!("Failed to create hypatia lab: {e}"), None)
         })?;
-        let shelf_name = canonicalize_shelf_name(shelf);
+        let shelf_name = self.resolve_shelf(shelf);
         let scope_existence = hypatia_lab
             .field_value_exists(&shelf_name, "scopes", &name)
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
