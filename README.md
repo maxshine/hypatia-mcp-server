@@ -224,13 +224,13 @@ perform better overall:
 
 ### Ongoing
 
-- [ ] Companion repositories with integration plugins for popular agent hosts
+- [x] Companion repositories with integration plugins for popular agent hosts
       (Codex and Claude Code are available in this repository; others will be following).
-- [ ] More MCP surface area: additional tools, parameterized prompts, and resources.
-- [ ] Fill the test automation gap.
-- [ ] CI/CD automation to publish ready-to-run binaries.
-- [ ] Proper documentation site around the project.
-- [ ] Active contributions to upstream Hypatia.
+- [x] More MCP surface area: additional tools, parameterized prompts, and resources.
+- [x] Fill the test automation gap.
+- [x] CI/CD automation to publish ready-to-run binaries.
+- [x] Proper documentation site around the project.
+- [x] Active contributions to upstream Hypatia.
 
 ## License
 

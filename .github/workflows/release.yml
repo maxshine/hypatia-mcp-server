@@ -1,0 +1,117 @@
+name: Release
+
+on:
+  release:
+    types: [ created ]
+
+env:
+  CARGO_TERM_COLOR: always
+  BIN_NAME: hypatia-mcp-server
+  RELEASE_TAG: ${{ github.event.release.tag_name }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify release tag and code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name }}
+
+      - name: Ensure tag matches Cargo.toml version
+        run: |
+          cargo_version="$(cargo metadata --no-deps --format-version 1 --locked \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["packages"][0]["version"])')"
+          tag_version="${RELEASE_TAG#v}"
+          echo "Release tag: ${RELEASE_TAG} (version ${tag_version}); Cargo.toml version: ${cargo_version}"
+          if [ "${tag_version}" != "${cargo_version}" ]; then
+            echo "::error::Release tag '${RELEASE_TAG}' does not match Cargo.toml version '${cargo_version}'"
+            exit 1
+          fi
+
+      - name: Cargo check
+        run: cargo check --locked --all-targets --verbose
+
+  build:
+    name: Build ${{ matrix.target }}
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write # required to upload release assets
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,    target: x86_64-unknown-linux-gnu,  exe: "" }
+          - { os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu, exe: "" }
+          - { os: macos-latest,     target: aarch64-apple-darwin,      exe: "" }
+          - { os: windows-latest,   target: x86_64-pc-windows-msvc,    exe: ".exe" }
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name }}
+
+      - name: Install Rust target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build release binary
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Package artifact and compute SHA256
+        id: package
+        run: |
+          bin="${BIN_NAME}${{ matrix.exe }}"
+          name="${BIN_NAME}-${RELEASE_TAG}-${{ matrix.target }}"
+          mkdir -p "dist/${name}"
+          cp "target/${{ matrix.target }}/release/${bin}" "dist/${name}/"
+          cd dist
+
+          sha256() { if command -v sha256sum >/dev/null; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
+
+          # SHA256 of the compiled binary, shipped inside the zip
+          (cd "${name}" && sha256 "${bin}" > "${bin}.sha256")
+          cat "${name}/${bin}.sha256"
+
+          if command -v zip >/dev/null; then
+            zip -r "${name}.zip" "${name}"
+          else
+            7z a -tzip "${name}.zip" "${name}"
+          fi
+          # SHA256 of the zip, published alongside it
+          sha256 "${name}.zip" > "${name}.zip.sha256"
+          cat "${name}.zip.sha256"
+
+          {
+            echo "### ${{ matrix.target }}"
+            echo '```'
+            cat "${name}/${bin}.sha256" "${name}.zip.sha256"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.package.outputs.name }}
+          overwrite: true
+          path: |
+            dist/${{ steps.package.outputs.name }}.zip
+            dist/${{ steps.package.outputs.name }}.zip.sha256
+
+      - name: Publish to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${RELEASE_TAG}" \
+            "dist/${{ steps.package.outputs.name }}.zip" \
+            "dist/${{ steps.package.outputs.name }}.zip.sha256" \
+            --clobber --repo "${{ github.repository }}"
