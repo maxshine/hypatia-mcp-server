@@ -24,3 +24,9 @@ target
 # Added by cargo
 
 /target
+
+# Ignore local cargo settings
+.cargo/config.toml
+
+# Ignore Visual Studio Code settings
+.vscode/

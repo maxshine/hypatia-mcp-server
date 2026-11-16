@@ -10,7 +10,7 @@ It uses the portable Agent Plugins layout (root `plugin.json` and `mcp.json`).
 |---|---|
 | [plugin.json](plugin.json) | Plugin manifest; OpenAI presentation metadata lives under `extensions.com.openai` |
 | [mcp.json](mcp.json) | MCP server `hypatia_memory` at `http://localhost:8000/mcp` (the server's default) |
-| [hooks/hooks.json](hooks/hooks.json) | `SessionStart`, `UserPromptSubmit` and `Stop` hooks calling the server's hook tools (auto-discovered by Codex) |
+| [hooks/hooks.json](hooks/hooks.json) | `SessionStart`, `UserPromptSubmit` and `Stop` hooks calling the server's hook tools (not discovered by Codex yet; see [Enable the hooks](#enable-the-hooks-codex-bug-workaround)) |
 | [skills/hypatia](skills/hypatia/SKILL.md) | Natural-language knowledge CRUD, triples, JSE queries, search and shelf management via the MCP tools |
 | [skills/hypatia-memory](skills/hypatia-memory/SKILL.md) | Responds to the hooks' `TRIGGER:*` signals: summary cascade, work-unit extraction, remember/recall/forget |
 | [skills/hypatia-dream](skills/hypatia-dream/SKILL.md) | Incremental graph consolidation at a work-period boundary (`report` / `apply` modes), with [evals](skills/hypatia-dream/evals/evals.json) |
@@ -25,10 +25,69 @@ with `hypatia` CLI commands replaced by the `hypatia_memory` MCP tools.
    [.agents/plugins/marketplace.json](../../.agents/plugins/marketplace.json)):
    `codex plugin marketplace add maxshine/hypatia-mcp-server`
 3. Install `hypatia-codex-mcp-plugin` from the plugin directory in Codex.
-4. Review and trust the plugin's hooks. Codex skips plugin-bundled hooks until you do.
+4. Enable the hooks with the [workaround below](#enable-the-hooks-codex-bug-workaround).
+   Codex currently does not load this plugin's bundled hooks, so `/hooks` shows none after install.
 
 Hooks are on by default in Codex. Plugins that bundle lifecycle hooks are not eligible
 for the public plugin directory, so distribution is through this repository's marketplace.
+
+## Enable the hooks (Codex bug workaround)
+
+**Symptom:** the MCP tools and skills work after install, but `/hooks` in Codex CLI lists none of
+the plugin's hooks, and nothing is recorded or injected at session start, prompt submit or stop.
+
+**Cause:** a Codex bug. Codex only loads bundled hooks from plugins with a legacy
+`.codex-plugin/plugin.json` manifest. For plugins with a portable Agent Plugins root `plugin.json`,
+like this one, the hook-only loader and the plugin-detail path return no hooks, even though the
+manifest declares `extensions.com.openai.hooks` (`./hooks/hooks.json`). Reports on Codex 0.166.0
+and 0.167.0 confirm this for `hooks/list` and `plugin/read` after a normal local marketplace
+install. Tracked in [openai/codex#59516](https://github.com/openai/codex/issues/59516), which
+is open and has no maintainer response or fix yet.
+
+**Check first:** the bug may already be fixed in your Codex version, in which case you don't need
+the workaround.
+
+1. Check your version with `codex --version`. The bug is confirmed on 0.166.0 and 0.167.0.
+2. Check whether [openai/codex#59516](https://github.com/openai/codex/issues/59516) has been
+   closed, and which release includes the fix.
+3. Install the plugin, restart Codex and run `/hooks`. If the plugin's `SessionStart`,
+   `UserPromptSubmit` and `Stop` hooks are listed, trust them there and skip the workaround.
+   Apply it only if they are missing.
+
+**Workaround:** copy the hook definitions from [hooks/hooks.json](hooks/hooks.json) into the
+user-level hooks file `$CODEX_HOME/hooks.json` (default `~/.codex/hooks.json`). Codex reads that
+file and the hooks then work as they do from a plugin.
+
+1. If `~/.codex/hooks.json` does not exist, copy the file:
+
+   ```bash
+   mkdir -p ~/.codex
+   cp codex/hypatia-codex-mcp-plugin/hooks/hooks.json ~/.codex/hooks.json
+   ```
+
+   If it already exists, do not overwrite it. Merge the `SessionStart`, `UserPromptSubmit` and
+   `Stop` entries from this plugin's `hooks/hooks.json` into the existing `hooks` object.
+
+2. Keep the `hypatia_memory` MCP server enabled: the hooks call its tools by that name, and it
+   still comes from the installed plugin's [mcp.json](mcp.json) (see the notes under
+   [Customise the MCP server settings](#customise-the-mcp-server-settings)).
+3. Restart Codex, open `/hooks`, and review and trust the three hooks. Codex does not run hooks
+   until you trust them.
+
+Notes:
+
+- The `hooks.json` files are plain copies, so they do not follow plugin updates. Re-copy after
+  you update the plugin if its hooks change.
+- Once Codex fixes the issue, remove the copied entries from `~/.codex/hooks.json`. Otherwise
+  each event runs both the user-level and the plugin hook, and messages are recorded twice.
+
+References:
+
+- [openai/codex#59516](https://github.com/openai/codex/issues/59516): "Codex CLI 0.166 does not
+  honor plugins bundled hooks declared in AgentPlugin manifest form".
+- Source locations identified in the issue, in `codex-rs/core-plugins/src`: `loader.rs` (hook-only
+  loader skips AgentPlugin manifests), `manager.rs` (plugin details skip them too) and
+  `agent_plugin_manifest.rs` (the `hooks` extension is parsed but not used).
 
 ## Customise the MCP server settings
 
