@@ -364,7 +364,10 @@ impl CombinedServer {
             }
             Ok(None) => {}
             Err(e) => {
-                return Err(ErrorData::internal_error(format!("Failed to check knowledge: {e}"), None));
+                return Err(ErrorData::internal_error(
+                    format!("Failed to check knowledge: {e}"),
+                    None,
+                ));
             }
         }
         let content = hypatia::model::Content::new(data.unwrap_or_default())

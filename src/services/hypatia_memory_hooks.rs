@@ -30,7 +30,7 @@ pub fn hypatia_hook_hook_log() -> std::path::PathBuf {
 pub enum MessageRole {
     User,
     Assistant,
-    None
+    None,
 }
 
 impl MessageRole {
