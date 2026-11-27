@@ -59,14 +59,14 @@ jobs:
         with:
           ref: refs/tags/${{ github.event.release.tag_name }}
 
+      # workaround for ort 2.0.0-rc.13: https://github.com/pykeio/ort/releases#release-v2.0.0-rc.14
+      - name: Setup Rust toolchain 1.99
+        run: |
+          rustup toolchain install 1.99.0 --profile minimal
+          rustup default 1.99.0
+
       - name: Install Rust target
         run: rustup target add ${{ matrix.target }}
-
-      # ort-sys 2.0.0-rc.13 copies DLLs into target/<triple>/release/deps, which
-      # recent Rust no longer creates; pre-create it on Windows only.
-      - name: Create deps dir for ort-sys (Windows)
-        if: runner.os == 'Windows'
-        run: mkdir -p target/${{ matrix.target }}/release/{build,examples,deps}
 
       - name: Build release binary
         run: RUST_BACKTRACE=1 cargo build -vv --release --locked --target ${{ matrix.target }}
