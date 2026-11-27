@@ -59,11 +59,17 @@ jobs:
         with:
           ref: refs/tags/${{ github.event.release.tag_name }}
 
+      # workaround for ort 2.0.0-rc.13: https://github.com/pykeio/ort/releases#release-v2.0.0-rc.14
+      - name: Setup Rust toolchain 1.99
+        run: |
+          rustup toolchain install 1.99.0 --profile minimal
+          rustup default 1.99.0
+
       - name: Install Rust target
         run: rustup target add ${{ matrix.target }}
 
       - name: Build release binary
-        run: cargo build --release --locked --target ${{ matrix.target }}
+        run: RUST_BACKTRACE=1 cargo build -vv --release --locked --target ${{ matrix.target }}
 
       - name: Package artifact and compute SHA256
         id: package
