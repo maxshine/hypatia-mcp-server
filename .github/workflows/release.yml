@@ -62,8 +62,14 @@ jobs:
       - name: Install Rust target
         run: rustup target add ${{ matrix.target }}
 
+      # ort-sys 2.0.0-rc.13 copies DLLs into target/<triple>/release/deps, which
+      # recent Rust no longer creates; pre-create it on Windows only.
+      - name: Create deps dir for ort-sys (Windows)
+        if: runner.os == 'Windows'
+        run: mkdir -p target/${{ matrix.target }}/release/{build,examples,deps}
+
       - name: Build release binary
-        run: cargo build --release --locked --target ${{ matrix.target }}
+        run: RUST_BACKTRACE=1 cargo build -vv --release --locked --target ${{ matrix.target }}
 
       - name: Package artifact and compute SHA256
         id: package
